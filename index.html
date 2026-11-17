@@ -1,0 +1,2133 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#041322" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Steve Ocean 3D" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <link id="pwa-manifest" rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22Steve%20Ocean%203D%22%2C%22short_name%22%3A%22Steve%20Ocean%22%2C%22display%22%3A%22standalone%22%7D" />
+  <link id="pwa-icon" rel="icon" type="image/png" href="" />
+  <link id="pwa-apple-icon" rel="apple-touch-icon" href="" />
+  <title>Minecraft Steve 3D Ocean Simulator</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #041322;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      touch-action: none;
+    }
+    #canvas-container {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+    }
+
+    /* HUD */
+    .hud-top-left {
+      position: fixed;
+      top: 14px;
+      left: 14px;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+    .hud-top-left.hidden {
+      opacity: 0;
+      visibility: hidden;
+    }
+    .hud-pill {
+      background: rgba(10, 18, 28, 0.58);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 12px;
+      padding: 8px 13px;
+      color: #eef6ff;
+      font-size: 13px;
+      line-height: 1.45;
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.28);
+    }
+    .hud-pill strong {
+      color: #6ce5ff;
+      font-weight: 600;
+    }
+    .hud-hint {
+      font-size: 11px;
+      color: rgba(220, 238, 255, 0.72);
+    }
+
+    .hud-top-right {
+      position: fixed;
+      top: 14px;
+      right: 14px;
+      z-index: 30;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .icon-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      height: 44px;
+      padding: 0 14px;
+      border-radius: 13px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(10, 18, 28, 0.65);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+      transition: transform 0.12s ease, background 0.15s ease, width 0.15s ease, padding 0.15s ease;
+    }
+    .icon-btn.square {
+      width: 44px;
+      padding: 0;
+      font-size: 19px;
+    }
+    .icon-btn:active {
+      transform: scale(0.94);
+    }
+    .icon-btn:hover {
+      background: rgba(22, 38, 56, 0.82);
+    }
+
+    /* Settings Panel */
+    #settings-panel {
+      position: fixed;
+      top: 68px;
+      right: 14px;
+      width: min(355px, calc(100vw - 28px));
+      max-height: calc(100vh - 86px);
+      overflow-y: auto;
+      z-index: 40;
+      background: rgba(9, 16, 26, 0.86);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 18px;
+      padding: 16px;
+      color: #f0f6ff;
+      box-shadow: 0 18px 48px rgba(0, 0, 0, 0.55);
+      transform-origin: top right;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      touch-action: pan-y;
+    }
+    #settings-panel.hidden {
+      opacity: 0;
+      transform: scale(0.94) translateY(-8px);
+      pointer-events: none;
+    }
+    #settings-panel::-webkit-scrollbar {
+      width: 6px;
+    }
+    #settings-panel::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.22);
+      border-radius: 4px;
+    }
+    .panel-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin: 0 0 12px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: #ffffff;
+    }
+    .section-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #7cc8ff;
+      margin: 14px 0 8px 0;
+      font-weight: 700;
+    }
+    .presets-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7px;
+    }
+    .preset-btn {
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: rgba(255, 255, 255, 0.07);
+      color: #dceaff;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .preset-btn.active {
+      background: linear-gradient(135deg, #0ea5e9, #2563eb);
+      border-color: rgba(147, 210, 255, 0.6);
+      color: #ffffff;
+      box-shadow: 0 4px 14px rgba(14, 165, 233, 0.4);
+    }
+
+    .control-row {
+      margin-bottom: 11px;
+    }
+    .control-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12.5px;
+      margin-bottom: 4px;
+      color: #dbe9f8;
+    }
+    .control-val {
+      color: #6ce5ff;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+    input[type="range"] {
+      width: 100%;
+      accent-color: #38bdf8;
+      cursor: pointer;
+      height: 6px;
+    }
+    .toggle-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 7px 0;
+      font-size: 13px;
+      color: #dbe9f8;
+      border-top: 1px solid rgba(255, 255, 255, 0.07);
+    }
+    .toggle-row input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: #38bdf8;
+      cursor: pointer;
+    }
+
+    /* PWA Install Button */
+    .install-pwa-btn {
+      width: 100%;
+      margin-top: 6px;
+      padding: 11px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(147, 210, 255, 0.45);
+      background: linear-gradient(135deg, #0284c7, #2563eb);
+      color: #ffffff;
+      font-size: 13.5px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 6px 18px rgba(14, 165, 233, 0.35);
+      transition: transform 0.12s ease, opacity 0.15s ease;
+    }
+    .install-pwa-btn:active {
+      transform: scale(0.97);
+    }
+    .install-pwa-btn.installed {
+      background: rgba(16, 185, 129, 0.22);
+      border-color: rgba(52, 211, 153, 0.5);
+      color: #a7f3d0;
+      box-shadow: none;
+      cursor: default;
+    }
+    .pwa-hint {
+      margin-top: 8px;
+      padding: 9px 11px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      font-size: 11.5px;
+      line-height: 1.45;
+      color: #cfe6ff;
+    }
+    .pwa-hint.hidden {
+      display: none;
+    }
+
+    /* Virtual Joystick */
+    #joystick-zone {
+      position: fixed;
+      bottom: 24px;
+      left: 24px;
+      width: 136px;
+      height: 136px;
+      z-index: 25;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      touch-action: none;
+      transform-origin: bottom left;
+    }
+    #joystick-base {
+      position: relative;
+      width: 124px;
+      height: 124px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.16) 100%);
+      border: 2px solid rgba(255, 255, 255, 0.28);
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35), inset 0 0 18px rgba(108, 229, 255, 0.12);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+    #joystick-stick {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 54px;
+      height: 54px;
+      margin-left: -27px;
+      margin-top: -27px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, #ffffff, #8bdcff);
+      border: 2px solid rgba(255, 255, 255, 0.85);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
+      pointer-events: none;
+      transition: transform 0.04s linear;
+    }
+  </style>
+</head>
+<body>
+  <div id="canvas-container"></div>
+
+  <!-- HUD Info -->
+  <div class="hud-top-left" id="hud-left">
+    <div class="hud-pill">
+      <div>Скорость: <strong id="hud-speed">0.0</strong> м/с &nbsp;|&nbsp; Высота волны: <strong id="hud-wave">1.2</strong> м</div>
+      <div id="hud-fps-line">FPS: <strong id="hud-fps">60</strong> &nbsp;|&nbsp; Режим: <strong id="hud-quality">Ультра</strong></div>
+      <div class="hud-hint">Джойстик / WASD — грести • Свайп / мышь — камера • Колёсико / щипок — зум</div>
+    </div>
+  </div>
+
+  <!-- Top-Right Buttons -->
+  <div class="hud-top-right">
+    <button class="icon-btn square" id="audio-btn" title="Звук ветра">🔇</button>
+    <button class="icon-btn" id="settings-btn" title="Настройки">⚙️ Настройки</button>
+  </div>
+
+  <!-- Settings Panel -->
+  <div id="settings-panel" class="hidden">
+    <div class="panel-title">
+      <span>Настройки океана и графики</span>
+      <button id="close-settings" style="background:none;border:none;color:#9cb3cc;font-size:18px;cursor:pointer;">✕</button>
+    </div>
+
+    <div class="section-label">Оптимизация (Пресеты)</div>
+    <div class="presets-grid">
+      <button class="preset-btn active" data-preset="ultra">🚀 Ультра 100%</button>
+      <button class="preset-btn" data-preset="high">✨ Высокое</button>
+      <button class="preset-btn" data-preset="medium">⚖️ Среднее</button>
+      <button class="preset-btn" data-preset="low">🔋 Слабый / Эконом</button>
+    </div>
+
+    <div class="section-label">Океан и волны</div>
+    <div class="control-row">
+      <div class="control-header"><span>Высота волн</span><span class="control-val" id="val-waveHeight">1.20</span></div>
+      <input type="range" id="inp-waveHeight" min="0.05" max="6.50" step="0.05" value="1.20">
+    </div>
+    <div class="control-row">
+      <div class="control-header"><span>Частота / кол-во волн</span><span class="control-val" id="val-waveFreq">1.00x</span></div>
+      <input type="range" id="inp-waveFreq" min="0.30" max="2.50" step="0.05" value="1.00">
+    </div>
+    <div class="control-row">
+      <div class="control-header"><span>Скорость волн</span><span class="control-val" id="val-waveSpeed">1.00</span></div>
+      <input type="range" id="inp-waveSpeed" min="0.10" max="2.50" step="0.05" value="1.00">
+    </div>
+    <div class="control-row">
+      <div class="control-header"><span>Прозрачность океана</span><span class="control-val" id="val-transparency">45%</span></div>
+      <input type="range" id="inp-transparency" min="0" max="100" step="5" value="45">
+    </div>
+    <div class="control-row">
+      <div class="control-header"><span>Пена на гребнях</span><span class="control-val" id="val-foam">1.00</span></div>
+      <input type="range" id="inp-foam" min="0.0" max="2.0" step="0.05" value="1.00">
+    </div>
+
+    <div class="section-label">Небо и атмосфера</div>
+    <div class="control-row">
+      <div class="control-header"><span>Высота солнца (Время суток)</span><span class="control-val" id="val-sunElev">28°</span></div>
+      <input type="range" id="inp-sunElev" min="-4" max="80" step="1" value="28">
+    </div>
+    <div class="control-row">
+      <div class="control-header"><span>Направление солнца</span><span class="control-val" id="val-sunAzim">140°</span></div>
+      <input type="range" id="inp-sunAzim" min="0" max="360" step="2" value="140">
+    </div>
+    <div class="control-row">
+      <div class="control-header"><span>Облачность</span><span class="control-val" id="val-clouds">0.55</span></div>
+      <input type="range" id="inp-clouds" min="0.0" max="1.0" step="0.05" value="0.55">
+    </div>
+
+    <div class="section-label">Лодка и частицы</div>
+    <div class="control-row">
+      <div class="control-header"><span>Скорость лодки</span><span class="control-val" id="val-boatSpeed">1.0x</span></div>
+      <input type="range" id="inp-boatSpeed" min="0.4" max="2.5" step="0.1" value="1.0">
+    </div>
+    <div class="control-row">
+      <div class="control-header"><span>Частицы брызг и пены</span><span class="control-val" id="val-particles">100%</span></div>
+      <input type="range" id="inp-particles" min="0" max="100" step="5" value="100">
+    </div>
+
+    <div class="section-label">Джойстик</div>
+    <div class="control-row">
+      <div class="control-header"><span>Размер джойстика</span><span class="control-val" id="val-joyScale">100%</span></div>
+      <input type="range" id="inp-joyScale" min="60" max="150" step="5" value="100">
+    </div>
+    <div class="control-row">
+      <div class="control-header"><span>Прозрачность джойстика</span><span class="control-val" id="val-joyTransp">15%</span></div>
+      <input type="range" id="inp-joyTransp" min="0" max="90" step="5" value="15">
+    </div>
+
+    <div class="section-label">Интерфейс, звук и графика</div>
+    <div class="control-row">
+      <div class="control-header"><span>Разрешение рендера (DPR)</span><span class="control-val" id="val-dpr">1.5x</span></div>
+      <input type="range" id="inp-dpr" min="0.5" max="2.0" step="0.1" value="1.5">
+    </div>
+    <div class="toggle-row">
+      <span>Звук ветра</span>
+      <input type="checkbox" id="chk-audio">
+    </div>
+    <div class="toggle-row">
+      <span>Показывать кнопку звука (🔊/🔇)</span>
+      <input type="checkbox" id="chk-show-audio-btn" checked>
+    </div>
+    <div class="toggle-row">
+      <span>Минималистичная кнопка (только ⚙️)</span>
+      <input type="checkbox" id="chk-minimal-btn">
+    </div>
+    <div class="toggle-row">
+      <span>Показывать данные в углу (HUD)</span>
+      <input type="checkbox" id="chk-hud" checked>
+    </div>
+    <div class="toggle-row">
+      <span>Показывать счётчик FPS</span>
+      <input type="checkbox" id="chk-fps" checked>
+    </div>
+    <div class="toggle-row">
+      <span>Тени и блики высокого качества</span>
+      <input type="checkbox" id="chk-shadows" checked>
+    </div>
+    <div class="toggle-row">
+      <span>Авто-доворот камеры за лодкой</span>
+      <input type="checkbox" id="chk-autofollow">
+    </div>
+
+    <div class="section-label">Веб-приложение (PWA)</div>
+    <button id="install-pwa-btn" class="install-pwa-btn">📲 Установить как веб-приложение</button>
+    <div id="pwa-hint-box" class="pwa-hint hidden"></div>
+  </div>
+
+  <!-- Virtual Touch Joystick -->
+  <div id="joystick-zone" style="opacity: 0.85;">
+    <div id="joystick-base">
+      <div id="joystick-stick"></div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    (function () {
+      'use strict';
+
+      function generatePwaIconDataUrl(size) {
+        const c = document.createElement('canvas');
+        c.width = size;
+        c.height = size;
+        const ctx = c.getContext('2d');
+
+        const bgGrad = ctx.createLinearGradient(0, 0, 0, size);
+        bgGrad.addColorStop(0, '#0ea5e9');
+        bgGrad.addColorStop(0.55, '#0369a1');
+        bgGrad.addColorStop(1, '#041322');
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, size, size);
+
+        const sunGrad = ctx.createRadialGradient(size * 0.82, size * 0.18, 2, size * 0.82, size * 0.18, size * 0.25);
+        sunGrad.addColorStop(0, 'rgba(255, 248, 210, 1)');
+        sunGrad.addColorStop(0.4, 'rgba(255, 220, 130, 0.55)');
+        sunGrad.addColorStop(1, 'rgba(255, 200, 100, 0)');
+        ctx.fillStyle = sunGrad;
+        ctx.fillRect(0, 0, size, size);
+
+        ctx.fillStyle = 'rgba(56, 189, 248, 0.35)';
+        ctx.beginPath();
+        ctx.moveTo(0, size * 0.72);
+        ctx.quadraticCurveTo(size * 0.25, size * 0.64, size * 0.5, size * 0.72);
+        ctx.quadraticCurveTo(size * 0.75, size * 0.80, size, size * 0.70);
+        ctx.lineTo(size, size);
+        ctx.lineTo(0, size);
+        ctx.closePath();
+        ctx.fill();
+
+        const face = [
+          'HHHHHHHH',
+          'HHHHHHHH',
+          'HSSSSSSH',
+          'SSSSSSSS',
+          'SWEllEWS',
+          'SSSNNSsS',
+          'SSMMMMSS',
+          'SSmSSmSS'
+        ];
+        const pal = {
+          'S': '#c69672', 's': '#bd8b65', 'l': '#cf9f7c',
+          'H': '#3b2617', 'W': '#ffffff', 'E': '#4b3ea8',
+          'N': '#9e6549', 'M': '#6b3b24', 'm': '#854e34'
+        };
+        const headSize = Math.floor(size * 0.56);
+        const px = headSize / 8;
+        const startX = (size - headSize) / 2;
+        const startY = (size - headSize) / 2 - size * 0.03;
+
+        ctx.fillStyle = 'rgba(0,0,0,0.28)';
+        ctx.fillRect(startX + px * 0.35, startY + px * 0.35, headSize, headSize);
+
+        for (let y = 0; y < 8; y++) {
+          for (let x = 0; x < 8; x++) {
+            ctx.fillStyle = pal[face[y][x]];
+            ctx.fillRect(
+              Math.floor(startX + x * px),
+              Math.floor(startY + y * px),
+              Math.ceil(px),
+              Math.ceil(px)
+            );
+          }
+        }
+        return c.toDataURL('image/png');
+      }
+
+      const icon192 = generatePwaIconDataUrl(192);
+      const icon512 = generatePwaIconDataUrl(512);
+      document.getElementById('pwa-icon').href = icon192;
+      document.getElementById('pwa-apple-icon').href = icon192;
+
+      const manifestObj = {
+        name: 'Minecraft Steve 3D Ocean',
+        short_name: 'Steve Ocean',
+        description: '3D симулятор плавания за Стива на лодке в реалистичном океане',
+        start_url: window.location.protocol.startsWith('http') ? window.location.href : './',
+        display: 'standalone',
+        orientation: 'any',
+        background_color: '#041322',
+        theme_color: '#041322',
+        icons: [
+          { src: icon192, sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: icon512, sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
+        ]
+      };
+      const manifestBlob = new Blob([JSON.stringify(manifestObj)], { type: 'application/manifest+json' });
+      const manifestUrl = URL.createObjectURL(manifestBlob);
+      document.getElementById('pwa-manifest').href = manifestUrl;
+
+      let deferredInstallPrompt = null;
+      const installPwaBtn = document.getElementById('install-pwa-btn');
+      const pwaHintBox = document.getElementById('pwa-hint-box');
+
+      function markInstalledUI() {
+        installPwaBtn.textContent = '✅ Установлено как приложение';
+        installPwaBtn.classList.add('installed');
+        pwaHintBox.classList.add('hidden');
+      }
+
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+      if (isStandalone) {
+        markInstalledUI();
+      }
+
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredInstallPrompt = e;
+        installPwaBtn.textContent = '📲 Установить как веб-приложение';
+        installPwaBtn.classList.remove('installed');
+      });
+
+      window.addEventListener('appinstalled', () => {
+        deferredInstallPrompt = null;
+        markInstalledUI();
+      });
+
+      installPwaBtn.addEventListener('click', async () => {
+        if (installPwaBtn.classList.contains('installed')) return;
+
+        if (deferredInstallPrompt) {
+          deferredInstallPrompt.prompt();
+          const { outcome } = await deferredInstallPrompt.userChoice;
+          deferredInstallPrompt = null;
+          if (outcome === 'accepted') {
+            markInstalledUI();
+          }
+          return;
+        }
+
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        const isFile = window.location.protocol === 'file:';
+        pwaHintBox.classList.remove('hidden');
+
+        if (isIOS) {
+          pwaHintBox.innerHTML = 'На iPhone/iPad: нажмите кнопку <strong>«Поделиться» (⬆️)</strong> внизу экрана Safari и выберите <strong>«На экран «Домой»»</strong>.';
+        } else if (isFile) {
+          pwaHintBox.innerHTML = 'Файл открыт локально (<code>file://</code>). Для авто-установки PWA откройте сайт по <strong>HTTPS</strong> или <strong>localhost</strong>. В Chrome на ПК также можно нажать <strong>⋮ → Сохранить и поделиться → Установить страницу как приложение</strong>.';
+        } else {
+          pwaHintBox.innerHTML = 'Нажмите значок установки в правой части адресной строки браузера или откройте меню <strong>⋮ → Установить приложение / На экран «Домой»</strong>.';
+        }
+      });
+
+      const state = {
+        preset: 'ultra',
+        waveHeight: 1.20,
+        waveFreq: 1.00,
+        waveSpeed: 1.00,
+        transparency: 0.45,
+        foam: 1.00,
+        sunElev: 28,
+        sunAzim: 140,
+        clouds: 0.55,
+        boatSpeed: 1.0,
+        particlesPct: 100,
+        joyScale: 1.0,
+        joyTransp: 0.15,
+        dpr: Math.min(window.devicePixelRatio || 1, 1.5),
+        shadows: true,
+        detailNormals: 1.0,
+        oceanSegs: 200,
+        autoFollow: false,
+        showHud: true,
+        showFps: true,
+        audioEnabled: false
+      };
+
+      const PRESETS = {
+        ultra:  { label: 'Ультра',  segs: 200, particlesPct: 100, dpr: Math.min(window.devicePixelRatio || 1, 2.0), shadows: true,  detailNormals: 1.0 },
+        high:   { label: 'Высокое', segs: 150, particlesPct: 80,  dpr: Math.min(window.devicePixelRatio || 1, 1.5), shadows: true,  detailNormals: 1.0 },
+        medium: { label: 'Среднее', segs: 100, particlesPct: 50,  dpr: 1.0,                                        shadows: false, detailNormals: 0.6 },
+        low:    { label: 'Эконом',  segs: 64,  particlesPct: 20,  dpr: 0.75,                                       shadows: false, detailNormals: 0.0 }
+      };
+
+      const container = document.getElementById('canvas-container');
+      const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+      renderer.setPixelRatio(state.dpr);
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.05;
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      container.appendChild(renderer.domElement);
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.15, 2600);
+
+      const sunLight = new THREE.DirectionalLight(0xfff5e4, 2.2);
+      sunLight.castShadow = true;
+      sunLight.shadow.mapSize.set(1024, 1024);
+      sunLight.shadow.camera.near = 1;
+      sunLight.shadow.camera.far = 40;
+      const dShadow = 5;
+      sunLight.shadow.camera.left = -dShadow;
+      sunLight.shadow.camera.right = dShadow;
+      sunLight.shadow.camera.top = dShadow;
+      sunLight.shadow.camera.bottom = -dShadow;
+      sunLight.shadow.bias = -0.001;
+      scene.add(sunLight);
+      scene.add(sunLight.target);
+
+      const hemiLight = new THREE.HemisphereLight(0x8fd3ff, 0x0b3a55, 0.85);
+      scene.add(hemiLight);
+
+      const ambientLight = new THREE.AmbientLight(0x28435a, 0.45);
+      scene.add(ambientLight);
+
+      function createPixelTexture(width, height, painterFn) {
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        painterFn(ctx, width, height);
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.magFilter = THREE.NearestFilter;
+        tex.minFilter = THREE.NearestFilter;
+        tex.generateMipmaps = false;
+        return tex;
+      }
+
+      function makePixelBoxMaterials(faces) {
+        return faces.map(tex => new THREE.MeshStandardMaterial({
+          map: tex,
+          roughness: 0.85,
+          metalness: 0.05
+        }));
+      }
+
+      function fillGrid(ctx, rows, palette) {
+        for (let y = 0; y < rows.length; y++) {
+          const row = rows[y];
+          for (let x = 0; x < row.length; x++) {
+            const ch = row[x];
+            ctx.fillStyle = palette[ch] || '#ff00ff';
+            ctx.fillRect(x, y, 1, 1);
+          }
+        }
+      }
+
+      function createSteveTextures() {
+        const skinPal = {
+          'S': '#c69672', 's': '#bd8b65', 'd': '#b37e58', 'l': '#cf9f7c',
+          'H': '#3b2617', 'h': '#2f1d11', 'k': '#472f1e',
+          'W': '#ffffff', 'E': '#4b3ea8',
+          'N': '#9e6549', 'M': '#6b3b24', 'm': '#854e34'
+        };
+
+        const headFront = createPixelTexture(8, 8, (ctx) => fillGrid(ctx, [
+          'HHHHHHHH',
+          'HHHHHHHH',
+          'HSSSSSSH',
+          'SSSSSSSS',
+          'SWEllEWS',
+          'SSSNNSsS',
+          'SSMMMMSS',
+          'SSmSSmSS'
+        ], skinPal));
+
+        const headBack = createPixelTexture(8, 8, (ctx) => fillGrid(ctx, [
+          'HHHHHHHH',
+          'HhHHHHhH',
+          'HHHHHHHH',
+          'HHkHHkHH',
+          'HHHHHHHH',
+          'HhHHHHhH',
+          'HHHHHHHH',
+          'HHHHHHHH'
+        ], skinPal));
+
+        const headTop = createPixelTexture(8, 8, (ctx) => fillGrid(ctx, [
+          'HHHHHHHH',
+          'HhHHHHkH',
+          'HHHHHHHH',
+          'HHkHHHHH',
+          'HHHHhHHH',
+          'HHHHHHHH',
+          'HkHHHHhH',
+          'HHHHHHHH'
+        ], skinPal));
+
+        const headSideR = createPixelTexture(8, 8, (ctx) => fillGrid(ctx, [
+          'HHHHHHHH',
+          'HHHHHHHH',
+          'HHHHHHHS',
+          'HHHHSSSS',
+          'HHSSSSSS',
+          'HSSSSsSS',
+          'SSSSSSSS',
+          'SSsSSSSS'
+        ], skinPal));
+
+        const headSideL = createPixelTexture(8, 8, (ctx) => fillGrid(ctx, [
+          'HHHHHHHH',
+          'HHHHHHHH',
+          'SHHHHHHH',
+          'SSSSHHHH',
+          'SSSSSSHH',
+          'SSsSSSSH',
+          'SSSSSSSS',
+          'SSSSSsSS'
+        ], skinPal));
+
+        const headBottom = createPixelTexture(8, 8, (ctx) => {
+          ctx.fillStyle = '#b37e58';
+          ctx.fillRect(0, 0, 8, 8);
+        });
+
+        const shirtPal = {
+          'C': '#00aaaa', 'c': '#009696', 'b': '#00bbbb', 'd': '#008282',
+          'S': '#c69672', 's': '#b37e58'
+        };
+        const torsoFront = createPixelTexture(8, 12, (ctx) => fillGrid(ctx, [
+          'CCSSssCC',
+          'CCCSSCCC',
+          'CCCCCCCC',
+          'CcCCCCbC',
+          'CCCCCCCC',
+          'CCCcCCCC',
+          'CCbCCCcC',
+          'CCCCCCCC',
+          'CcCCCCCC',
+          'CCCCcCCC',
+          'CCCCCCCC',
+          'dCdCCdCd'
+        ], shirtPal));
+        const torsoBack = createPixelTexture(8, 12, (ctx) => fillGrid(ctx, [
+          'CCCCCCCC',
+          'CcCCCCcC',
+          'CCCCCCCC',
+          'CCCbCCCC',
+          'CCCCCCCC',
+          'CcCCCCbC',
+          'CCCCCCCC',
+          'CCCcCCCC',
+          'CCCCCCCC',
+          'CbCCCCcC',
+          'CCCCCCCC',
+          'dCdCCdCd'
+        ], shirtPal));
+        const torsoSide = createPixelTexture(4, 12, (ctx) => {
+          ctx.fillStyle = '#009696';
+          ctx.fillRect(0, 0, 4, 12);
+          ctx.fillStyle = '#00aaaa';
+          ctx.fillRect(1, 1, 2, 9);
+        });
+        const torsoTop = createPixelTexture(8, 4, (ctx) => {
+          ctx.fillStyle = '#00aaaa';
+          ctx.fillRect(0, 0, 8, 4);
+        });
+
+        const armFront = createPixelTexture(4, 12, (ctx) => fillGrid(ctx, [
+          'CCCC',
+          'CcCC',
+          'CCCC',
+          'dCdC',
+          'SSSS',
+          'sSSS',
+          'SSlS',
+          'SSSS',
+          'SSsS',
+          'SSSS',
+          'dSSd',
+          'SSSS'
+        ], { ...skinPal, ...shirtPal }));
+        const armTop = createPixelTexture(4, 4, (ctx) => {
+          ctx.fillStyle = '#00aaaa';
+          ctx.fillRect(0, 0, 4, 4);
+        });
+        const armBottom = createPixelTexture(4, 4, (ctx) => {
+          ctx.fillStyle = '#b37e58';
+          ctx.fillRect(0, 0, 4, 4);
+        });
+
+        const legPal = {
+          'J': '#3b3ba6', 'j': '#2f2f8a', 'k': '#4848b8',
+          'B': '#5a5a5a', 'b': '#424242'
+        };
+        const legFront = createPixelTexture(4, 12, (ctx) => fillGrid(ctx, [
+          'JJJJ',
+          'JjJJ',
+          'JJkJ',
+          'JJJJ',
+          'jJJJ',
+          'JJJJ',
+          'JJjJ',
+          'kJJJ',
+          'JJJJ',
+          'JjJj',
+          'BBBB',
+          'bBBb'
+        ], legPal));
+        const legTop = createPixelTexture(4, 4, (ctx) => {
+          ctx.fillStyle = '#3b3ba6';
+          ctx.fillRect(0, 0, 4, 4);
+        });
+        const legBottom = createPixelTexture(4, 4, (ctx) => {
+          ctx.fillStyle = '#424242';
+          ctx.fillRect(0, 0, 4, 4);
+        });
+
+        return {
+          head: makePixelBoxMaterials([headSideL, headSideR, headTop, headBottom, headFront, headBack]),
+          torso: makePixelBoxMaterials([torsoSide, torsoSide, torsoTop, torsoTop, torsoFront, torsoBack]),
+          arm: makePixelBoxMaterials([armFront, armFront, armTop, armBottom, armFront, armFront]),
+          leg: makePixelBoxMaterials([legFront, legFront, legTop, legBottom, legFront, legFront])
+        };
+      }
+
+      function createOakWoodTexture(w = 16, h = 16) {
+        return createPixelTexture(w, h, (ctx) => {
+          const shades = ['#9f7e4d', '#8c6d40', '#ab8956', '#7e6036'];
+          for (let y = 0; y < h; y++) {
+            const plankRow = Math.floor(y / 4);
+            const isSeam = (y % 4 === 3);
+            for (let x = 0; x < w; x++) {
+              if (isSeam || (x === (plankRow * 7 + 3) % w)) {
+                ctx.fillStyle = '#624826';
+              } else {
+                const n = (Math.sin(x * 12.9898 + y * 78.233) * 43758.5453) % 1;
+                const idx = Math.floor(Math.abs(n) * shades.length);
+                ctx.fillStyle = shades[idx];
+              }
+              ctx.fillRect(x, y, 1, 1);
+            }
+          }
+        });
+      }
+
+      const boatRoot = new THREE.Group();
+      const boatTilt = new THREE.Group();
+      boatRoot.add(boatTilt);
+      scene.add(boatRoot);
+
+      const PX = 0.0625;
+
+      const boatMeshGroup = new THREE.Group();
+      const oakTex1 = createOakWoodTexture(16, 16);
+      const oakTex2 = createOakWoodTexture(16, 4);
+      const oakDarkMat = new THREE.MeshStandardMaterial({
+        map: createOakWoodTexture(16, 16),
+        color: 0xc2b096,
+        roughness: 0.9
+      });
+      const oakMat = new THREE.MeshStandardMaterial({
+        map: oakTex1,
+        roughness: 0.85
+      });
+      const oakWallMat = new THREE.MeshStandardMaterial({
+        map: oakTex2,
+        roughness: 0.85
+      });
+
+      function addBoatBox(w, h, d, x, y, z, mat) {
+        const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+        mesh.position.set(x, y, z);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        boatMeshGroup.add(mesh);
+        return mesh;
+      }
+
+      const bw = 22 * PX;
+      const bl = 28 * PX;
+      const wallH = 6 * PX;
+      const wallT = 2.5 * PX;
+      const floorH = 2.5 * PX;
+
+      addBoatBox(bw, floorH, bl, 0, -0.05, 0, oakDarkMat);
+      addBoatBox(wallT, wallH, bl,  bw / 2 - wallT / 2, wallH / 2 - 0.05, 0, oakMat);
+      addBoatBox(wallT, wallH, bl, -bw / 2 + wallT / 2, wallH / 2 - 0.05, 0, oakMat);
+      addBoatBox(bw - wallT * 2, wallH, wallT, 0, wallH / 2 - 0.05,  bl / 2 - wallT / 2, oakWallMat);
+      addBoatBox(bw - wallT * 2, wallH, wallT, 0, wallH / 2 - 0.05, -bl / 2 + wallT / 2, oakWallMat);
+      addBoatBox(bw - wallT * 2, 1.5 * PX, 6 * PX, 0, 0.04, -2 * PX, oakDarkMat);
+
+      const oarMat = new THREE.MeshStandardMaterial({ map: oakTex2, color: 0xe6cfa8, roughness: 0.8 });
+      function createOar(side) {
+        const pivot = new THREE.Group();
+        pivot.position.set(side * (bw / 2 - 0.01), wallH - 0.03, 0.06);
+
+        const holder = new THREE.Group();
+        holder.rotation.order = 'YXZ';
+        holder.rotation.y = side * 1.98;
+        holder.rotation.x = 0.36;
+
+        const shaftLen = 1.02;
+        const shaft = new THREE.Mesh(
+          new THREE.BoxGeometry(1.5 * PX, 1.5 * PX, shaftLen),
+          oarMat
+        );
+        shaft.position.set(0, 0, -0.22 + shaftLen / 2);
+        shaft.castShadow = true;
+
+        const collar = new THREE.Mesh(
+          new THREE.BoxGeometry(1.7 * PX, 2.2 * PX, 1.6 * PX),
+          oakDarkMat
+        );
+        collar.position.set(0, 0, 0.80);
+        collar.castShadow = true;
+
+        const bladeLen = 6.5 * PX;
+        const blade = new THREE.Mesh(
+          new THREE.BoxGeometry(0.9 * PX, 4.2 * PX, bladeLen),
+          oarMat
+        );
+        blade.position.set(0, 0, 0.80 + bladeLen / 2);
+        blade.castShadow = true;
+
+        holder.add(shaft, collar, blade);
+        pivot.add(holder);
+        return pivot;
+      }
+      const leftOar = createOar(1);
+      const rightOar = createOar(-1);
+      boatMeshGroup.add(leftOar);
+      boatMeshGroup.add(rightOar);
+
+      boatTilt.add(boatMeshGroup);
+
+      const steveMats = createSteveTextures();
+      const steveGroup = new THREE.Group();
+      steveGroup.position.set(0, 0.08, -2.2 * PX);
+
+      const legGeo = new THREE.BoxGeometry(4 * PX, 12 * PX, 4 * PX);
+      legGeo.translate(0, -6 * PX, 0);
+      const leftLeg = new THREE.Mesh(legGeo, steveMats.leg);
+      leftLeg.position.set(2 * PX, 4 * PX, 0);
+      leftLeg.rotation.x = -1.32;
+      leftLeg.rotation.z = 0.08;
+      leftLeg.castShadow = true;
+
+      const rightLeg = new THREE.Mesh(legGeo, steveMats.leg);
+      rightLeg.position.set(-2 * PX, 4 * PX, 0);
+      rightLeg.rotation.x = -1.32;
+      rightLeg.rotation.z = -0.08;
+      rightLeg.castShadow = true;
+
+      const torsoGeo = new THREE.BoxGeometry(8 * PX, 12 * PX, 4 * PX);
+      torsoGeo.translate(0, 6 * PX, 0);
+      const torso = new THREE.Mesh(torsoGeo, steveMats.torso);
+      torso.position.set(0, 3 * PX, 0);
+      torso.castShadow = true;
+      torso.receiveShadow = true;
+
+      const headGeo = new THREE.BoxGeometry(8 * PX, 8 * PX, 8 * PX);
+      headGeo.translate(0, 4 * PX, 0);
+      const head = new THREE.Mesh(headGeo, steveMats.head);
+      head.position.set(0, 15 * PX, 0);
+      head.castShadow = true;
+      head.receiveShadow = true;
+
+      const armGeo = new THREE.BoxGeometry(4 * PX, 12 * PX, 4 * PX);
+      armGeo.translate(0, -5 * PX, 0);
+      const leftArm = new THREE.Mesh(armGeo, steveMats.arm);
+      leftArm.position.set(6 * PX, 14 * PX, 0);
+      leftArm.rotation.x = -0.95;
+      leftArm.rotation.z = 0.14;
+      leftArm.castShadow = true;
+
+      const rightArm = new THREE.Mesh(armGeo, steveMats.arm);
+      rightArm.position.set(-6 * PX, 14 * PX, 0);
+      rightArm.rotation.x = -0.95;
+      rightArm.rotation.z = -0.14;
+      rightArm.castShadow = true;
+
+      steveGroup.add(leftLeg, rightLeg, torso, head, leftArm, rightArm);
+      boatTilt.add(steveGroup);
+
+      const WAVES = [
+        { dx:  0.92, dz:  0.39, wl: 38.0, amp: 0.42, steep: 0.52 },
+        { dx:  0.45, dz: -0.89, wl: 25.0, amp: 0.28, steep: 0.48 },
+        { dx: -0.68, dz:  0.73, wl: 15.0, amp: 0.16, steep: 0.44 },
+        { dx:  0.81, dz: -0.58, wl:  9.5, amp: 0.09, steep: 0.38 },
+        { dx: -0.25, dz: -0.97, wl:  6.0, amp: 0.045, steep: 0.32 },
+        { dx:  0.15, dz:  0.99, wl:  4.1, amp: 0.025, steep: 0.28 }
+      ];
+
+      function evalGerstnerRaw(x, z, time, waveHeight, waveFreq, waveSpeed) {
+        let ox = 0, oy = 0, oz = 0;
+        let nx = 0, ny = 1, nz = 0;
+        for (let i = 0; i < WAVES.length; i++) {
+          const w = WAVES[i];
+          const k = ((Math.PI * 2) / w.wl) * waveFreq;
+          const amp = w.amp * waveHeight;
+          const speed = Math.sqrt(9.81 / k) * waveSpeed;
+          const q = w.steep / Math.max(1.0, 6.0 * k * amp);
+          const phase = k * (w.dx * x + w.dz * z) - speed * time;
+          const c = Math.cos(phase);
+          const s = Math.sin(phase);
+
+          ox += q * amp * w.dx * c;
+          oz += q * amp * w.dz * c;
+          oy += amp * s;
+
+          const wa = k * amp;
+          nx -= w.dx * wa * c;
+          nz -= w.dz * wa * c;
+          ny -= q * wa * s;
+        }
+        const invLen = 1.0 / Math.hypot(nx, ny, nz);
+        return {
+          dx: ox, dy: oy, dz: oz,
+          nx: nx * invLen, ny: ny * invLen, nz: nz * invLen
+        };
+      }
+
+      function getWaveSurface(worldX, worldZ, time) {
+        const r1 = evalGerstnerRaw(worldX, worldZ, time, state.waveHeight, state.waveFreq, state.waveSpeed);
+        const r2 = evalGerstnerRaw(worldX - r1.dx, worldZ - r1.dz, time, state.waveHeight, state.waveFreq, state.waveSpeed);
+        return {
+          y: r2.dy,
+          nx: r2.nx,
+          ny: r2.ny,
+          nz: r2.nz
+        };
+      }
+
+      const SHARED_SKY_GLSL = `
+        float hash21(vec2 p) {
+          p = fract(p * vec2(123.34, 456.21));
+          p += dot(p, p + 45.32);
+          return fract(p.x * p.y);
+        }
+        float noise2(vec2 p) {
+          vec2 i = floor(p);
+          vec2 f = fract(p);
+          f = f * f * (3.0 - 2.0 * f);
+          float a = hash21(i);
+          float b = hash21(i + vec2(1.0, 0.0));
+          float c = hash21(i + vec2(0.0, 1.0));
+          float d = hash21(i + vec2(1.0, 1.0));
+          return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+        }
+        float fbmClouds(vec2 p) {
+          float v = 0.0;
+          float a = 0.5;
+          mat2 rot = mat2(0.8, 0.6, -0.6, 0.8);
+          for (int i = 0; i < 5; i++) {
+            v += a * noise2(p);
+            p = rot * p * 2.04 + vec2(13.1, 7.7);
+            a *= 0.5;
+          }
+          return v;
+        }
+
+        vec3 computeSky(vec3 dir, vec3 sunDir, float time, float cloudCov) {
+          float sunY = sunDir.y;
+          float dayFactor = clamp(sunY * 2.5 + 0.15, 0.0, 1.0);
+          float sunsetFactor = exp(-pow(abs(sunY - 0.08) * 4.5, 2.0));
+
+          vec3 zenithDay = vec3(0.11, 0.36, 0.78);
+          vec3 horizDay  = vec3(0.58, 0.80, 0.96);
+          vec3 zenithNight = vec3(0.015, 0.03, 0.08);
+          vec3 horizNight  = vec3(0.04, 0.08, 0.16);
+
+          vec3 zenith = mix(zenithNight, zenithDay, dayFactor);
+          vec3 horizon = mix(horizNight, horizDay, dayFactor);
+          horizon = mix(horizon, vec3(0.98, 0.50, 0.24), sunsetFactor * 0.78);
+
+          float y = clamp(dir.y, 0.0, 1.0);
+          vec3 sky = mix(horizon, zenith, pow(max(y, 0.0001), 0.52));
+
+          float sunDot = max(dot(dir, sunDir), 0.0);
+          vec3 sunGlowCol = mix(vec3(1.0, 0.42, 0.14), vec3(1.0, 0.93, 0.78), clamp(sunY * 3.0, 0.0, 1.0));
+          float aboveHoriz = smoothstep(-0.04, 0.03, dir.y);
+          sky += sunGlowCol * pow(max(sunDot, 0.0001), 10.0) * (0.28 + 0.45 * sunsetFactor) * dayFactor * aboveHoriz;
+          sky += vec3(1.0, 0.97, 0.88) * pow(max(sunDot, 0.0001), 220.0) * 1.4 * dayFactor * aboveHoriz;
+          float sunDisc = smoothstep(0.99935, 0.99978, sunDot);
+          sky += vec3(3.2, 2.8, 2.1) * sunDisc * clamp(sunY * 8.0 + 0.3, 0.0, 1.0) * aboveHoriz;
+
+          if (cloudCov > 0.01 && dir.y > 0.005) {
+            vec2 cloudUV = dir.xz / (dir.y + 0.13) * 0.65;
+            cloudUV += vec2(time * 0.012, time * 0.006);
+            float n = fbmClouds(cloudUV);
+            float thresh = mix(0.75, 0.35, cloudCov);
+            float density = smoothstep(thresh, thresh + 0.26, n);
+            float nLight = fbmClouds(cloudUV + sunDir.xz * 0.06);
+            float shadow = clamp(1.0 - (nLight - n) * 2.8, 0.42, 1.0);
+
+            vec3 cloudBright = mix(vec3(0.18, 0.22, 0.32), vec3(1.0, 0.99, 0.96), dayFactor);
+            cloudBright = mix(cloudBright, vec3(1.0, 0.66, 0.44), sunsetFactor * 0.75);
+            vec3 cloudDark = mix(vec3(0.08, 0.11, 0.18), vec3(0.55, 0.64, 0.75), dayFactor);
+            cloudDark = mix(cloudDark, vec3(0.48, 0.30, 0.34), sunsetFactor * 0.6);
+
+            vec3 cloudCol = mix(cloudDark, cloudBright, shadow);
+            cloudCol += sunGlowCol * pow(max(sunDot, 0.0001), 6.0) * 0.45 * dayFactor;
+            float horizonFade = smoothstep(0.005, 0.16, dir.y);
+            sky = mix(sky, cloudCol, density * horizonFade * 0.9);
+          }
+
+          if (dir.y < -0.045) {
+            float depthMask = smoothstep(-0.045, -0.34, dir.y);
+            vec3 shallow = mix(vec3(0.008, 0.04, 0.09), vec3(0.02, 0.25, 0.36), dayFactor);
+            vec3 abyss   = mix(vec3(0.002, 0.01, 0.025), vec3(0.003, 0.045, 0.11), dayFactor);
+            vec3 underCol = mix(shallow, abyss, smoothstep(-0.045, -0.65, dir.y));
+            sky = mix(sky, underCol, depthMask);
+          }
+          return sky;
+        }
+      `;
+
+      const skyGeo = new THREE.SphereGeometry(1700, 48, 32);
+      const skyMat = new THREE.ShaderMaterial({
+        side: THREE.BackSide,
+        depthWrite: false,
+        uniforms: {
+          uSunDir: { value: new THREE.Vector3(0, 0.5, 0.8) },
+          uTime: { value: 0 },
+          uClouds: { value: state.clouds }
+        },
+        vertexShader: `
+          varying vec3 vWorldDir;
+          void main() {
+            vec4 wp = modelMatrix * vec4(position, 1.0);
+            vWorldDir = position;
+            gl_Position = projectionMatrix * viewMatrix * wp;
+          }
+        `,
+        fragmentShader: `
+          varying vec3 vWorldDir;
+          uniform vec3 uSunDir;
+          uniform float uTime;
+          uniform float uClouds;
+          ${SHARED_SKY_GLSL}
+          void main() {
+            vec3 dir = normalize(vWorldDir);
+            vec3 col = computeSky(dir, normalize(uSunDir), uTime, uClouds);
+            gl_FragColor = vec4(col, 1.0);
+          }
+        `
+      });
+      const skyMesh = new THREE.Mesh(skyGeo, skyMat);
+      scene.add(skyMesh);
+
+      function buildOceanGeometry(segs) {
+        const geo = new THREE.PlaneGeometry(2, 2, segs, segs);
+        geo.rotateX(-Math.PI / 2);
+        const pos = geo.attributes.position;
+        const radius = 1450.0;
+        for (let i = 0; i < pos.count; i++) {
+          const u = pos.getX(i);
+          const v = pos.getZ(i);
+          const su = Math.sign(u);
+          const sv = Math.sign(v);
+          const au = Math.abs(u);
+          const av = Math.abs(v);
+          const wx = su * (0.02 * au + 0.98 * Math.pow(au, 4.0)) * radius;
+          const wz = sv * (0.02 * av + 0.98 * Math.pow(av, 4.0)) * radius;
+          pos.setXYZ(i, wx, 0, wz);
+        }
+        geo.computeBoundingSphere();
+        return geo;
+      }
+
+      const oceanUniforms = {
+        uTime: { value: 0 },
+        uWaveHeight: { value: state.waveHeight },
+        uWaveFreq: { value: state.waveFreq },
+        uWaveSpeed: { value: state.waveSpeed },
+        uTransparency: { value: state.transparency },
+        uFoam: { value: state.foam },
+        uSunDir: { value: new THREE.Vector3(0, 0.5, 0.8) },
+        uClouds: { value: state.clouds },
+        uDetailNormals: { value: state.detailNormals },
+        uBoatPos: { value: new THREE.Vector3() }
+      };
+
+      const oceanMat = new THREE.ShaderMaterial({
+        uniforms: oceanUniforms,
+        transparent: true,
+        depthWrite: true,
+        vertexShader: `
+          uniform float uTime;
+          uniform float uWaveHeight;
+          uniform float uWaveFreq;
+          uniform float uWaveSpeed;
+          uniform vec3 uBoatPos;
+
+          varying vec3 vWorldPos;
+          varying vec3 vWaveNormal;
+          varying float vWaveCrest;
+
+          void addGerstner(vec2 dir, float wl, float ampBase, float steep, vec2 xz,
+                           inout vec3 disp, inout vec3 norm, inout float crest) {
+            float k = (6.2831853 / wl) * uWaveFreq;
+            float amp = ampBase * uWaveHeight;
+            float spd = sqrt(9.81 / k) * uWaveSpeed;
+            float q = steep / max(1.0, 6.0 * k * amp);
+            float phase = k * dot(dir, xz) - spd * uTime;
+            float c = cos(phase);
+            float s = sin(phase);
+
+            disp.x += q * amp * dir.x * c;
+            disp.z += q * amp * dir.y * c;
+            disp.y += amp * s;
+
+            float wa = k * amp;
+            norm.x -= dir.x * wa * c;
+            norm.z -= dir.y * wa * c;
+            norm.y -= q * wa * s;
+
+            crest += max(0.0, s) * amp * (k * 0.45);
+          }
+
+          void main() {
+            vec4 wp = modelMatrix * vec4(position, 1.0);
+            vec2 xz = wp.xz;
+            vec3 disp = vec3(0.0);
+            vec3 norm = vec3(0.0, 1.0, 0.0);
+            float crest = 0.0;
+
+            addGerstner(vec2( 0.92,  0.39), 38.0, 0.42,  0.52, xz, disp, norm, crest);
+            addGerstner(vec2( 0.45, -0.89), 25.0, 0.28,  0.48, xz, disp, norm, crest);
+            addGerstner(vec2(-0.68,  0.73), 15.0, 0.16,  0.44, xz, disp, norm, crest);
+            addGerstner(vec2( 0.81, -0.58),  9.5, 0.09,  0.38, xz, disp, norm, crest);
+            addGerstner(vec2(-0.25, -0.97),  6.0, 0.045, 0.32, xz, disp, norm, crest);
+            addGerstner(vec2( 0.15,  0.99),  4.1, 0.025, 0.28, xz, disp, norm, crest);
+
+            float distFromBoat = length(xz - uBoatPos.xz);
+            float waveFade = 1.0 - smoothstep(220.0, 580.0, distFromBoat);
+            disp *= waveFade;
+            norm = normalize(mix(vec3(0.0, 1.0, 0.0), norm, waveFade));
+            crest *= waveFade;
+
+            wp.xyz += disp;
+            vWorldPos = wp.xyz;
+            vWaveNormal = norm;
+            vWaveCrest = crest;
+
+            gl_Position = projectionMatrix * viewMatrix * wp;
+          }
+        `,
+        fragmentShader: `
+          uniform float uTime;
+          uniform float uWaveHeight;
+          uniform float uWaveFreq;
+          uniform float uTransparency;
+          uniform float uFoam;
+          uniform vec3 uSunDir;
+          uniform float uClouds;
+          uniform float uDetailNormals;
+          uniform vec3 uBoatPos;
+
+          varying vec3 vWorldPos;
+          varying vec3 vWaveNormal;
+          varying float vWaveCrest;
+
+          ${SHARED_SKY_GLSL}
+
+          vec3 getMicroNormal(vec2 p, float dist) {
+            if (uDetailNormals < 0.05) return vec3(0.0, 1.0, 0.0);
+            float fade = 1.0 - smoothstep(25.0, 260.0, dist);
+            if (fade < 0.01) return vec3(0.0, 1.0, 0.0);
+
+            float fScale = 0.7 + 0.35 * uWaveFreq;
+            float e = 0.08;
+            vec2 p1 = p * 0.55 * fScale + vec2(uTime * 0.38, uTime * 0.22);
+            vec2 p2 = p * 1.45 * fScale + vec2(-uTime * 0.52, uTime * 0.41);
+            vec2 p3 = p * 3.40 * fScale + vec2(uTime * 0.75, -uTime * 0.65);
+
+            float h0 = noise2(p1) * 0.55 + noise2(p2) * 0.30 + noise2(p3) * 0.15;
+            float hx = noise2(p1 + vec2(e, 0.0)) * 0.55 + noise2(p2 + vec2(e * 2.0, 0.0)) * 0.30 + noise2(p3 + vec2(e * 4.0, 0.0)) * 0.15;
+            float hz = noise2(p1 + vec2(0.0, e)) * 0.55 + noise2(p2 + vec2(0.0, e * 2.0)) * 0.30 + noise2(p3 + vec2(0.0, e * 4.0)) * 0.15;
+
+            float strength = (0.28 + 0.12 * min(uWaveHeight, 2.5)) * fade * uDetailNormals;
+            return normalize(vec3((h0 - hx) / e * strength, 1.0, (h0 - hz) / e * strength));
+          }
+
+          void main() {
+            vec3 V = normalize(cameraPosition - vWorldPos);
+            float dist = length(cameraPosition - vWorldPos);
+            vec3 sunDir = normalize(uSunDir);
+
+            vec3 microN = getMicroNormal(vWorldPos.xz, dist);
+            vec3 N = normalize(vec3(vWaveNormal.x + microN.x * 0.55, vWaveNormal.y, vWaveNormal.z + microN.z * 0.55));
+
+            vec3 R = reflect(-V, N);
+            R.y = max(R.y, 0.02);
+            vec3 skyRefl = computeSky(normalize(R), sunDir, uTime, uClouds);
+
+            float NdotV = max(dot(N, V), 0.0);
+            float fresnel = 0.025 + 0.975 * pow(max(1.0 - NdotV, 0.0001), 4.6);
+
+            float dayFactor = clamp(sunDir.y * 2.5 + 0.15, 0.0, 1.0);
+            vec3 deepColor = mix(vec3(0.005, 0.02, 0.05), vec3(0.01, 0.13, 0.25), dayFactor);
+            vec3 sssColor  = mix(vec3(0.01, 0.07, 0.12), vec3(0.04, 0.46, 0.52), dayFactor);
+
+            float sssFactor = clamp(vWaveCrest * 0.85, 0.0, 1.0) * (0.35 + 0.65 * pow(max(dot(V, -sunDir + N * 0.5), 0.0), 2.5));
+            vec3 waterBody = mix(deepColor, sssColor, sssFactor);
+
+            vec3 col = mix(waterBody, skyRefl, clamp(fresnel * 0.92, 0.0, 0.96));
+
+            vec3 H = normalize(sunDir + V);
+            float NdotH = max(dot(N, H), 0.0);
+            float spec1 = pow(max(NdotH, 0.0001), 280.0) * 2.8;
+            float spec2 = pow(max(NdotH, 0.0001), 45.0) * 0.22;
+            vec3 sunCol = mix(vec3(1.0, 0.5, 0.2), vec3(1.0, 0.96, 0.86), clamp(sunDir.y * 3.0, 0.0, 1.0));
+            col += sunCol * (spec1 + spec2) * dayFactor;
+
+            float foamNoise = noise2(vWorldPos.xz * 1.8 + vec2(uTime * 0.4, -uTime * 0.3)) * 0.65
+                            + noise2(vWorldPos.xz * 5.2 - vec2(uTime * 0.7, uTime * 0.5)) * 0.35;
+            float steepFoam = smoothstep(0.32, 0.78, vWaveCrest * (0.85 + uWaveHeight * 0.20));
+            float boatDist = length(vWorldPos.xz - uBoatPos.xz);
+            float boatRing = smoothstep(1.35, 0.65, boatDist) * 0.55;
+
+            float foamMask = clamp((steepFoam + boatRing) * foamNoise * uFoam * 1.45, 0.0, 0.92);
+            vec3 foamCol = mix(vec3(0.32, 0.40, 0.50), vec3(0.92, 0.96, 0.99), dayFactor);
+            col = mix(col, foamCol, foamMask);
+
+            float fogFactor = smoothstep(220.0, 980.0, dist);
+            vec3 horizonSky = computeSky(normalize(vec3(-V.x, 0.004, -V.z)), sunDir, uTime, uClouds);
+            col = mix(col, horizonSky, fogFactor);
+
+            float baseAlpha = 1.0 - uTransparency * 0.65;
+            float waterAlpha = mix(baseAlpha, 1.0, clamp(fresnel * 1.05 + foamMask + fogFactor + (spec1 * 0.5), 0.0, 1.0));
+
+            gl_FragColor = vec4(col, waterAlpha);
+          }
+        `
+      });
+
+      let oceanMesh = new THREE.Mesh(buildOceanGeometry(state.oceanSegs), oceanMat);
+      oceanMesh.renderOrder = 1;
+      scene.add(oceanMesh);
+
+      function rebuildOceanMesh(segs) {
+        scene.remove(oceanMesh);
+        oceanMesh.geometry.dispose();
+        oceanMesh = new THREE.Mesh(buildOceanGeometry(segs), oceanMat);
+        oceanMesh.renderOrder = 1;
+        scene.add(oceanMesh);
+      }
+
+      const MAX_SPLASH = 1600;
+      const splashGeo = new THREE.BufferGeometry();
+      const sPos = new Float32Array(MAX_SPLASH * 3);
+      const sVel = new Float32Array(MAX_SPLASH * 3);
+      const sLife = new Float32Array(MAX_SPLASH);
+      const sMaxLife = new Float32Array(MAX_SPLASH);
+      const sSize = new Float32Array(MAX_SPLASH);
+      const sAlpha = new Float32Array(MAX_SPLASH);
+
+      for (let i = 0; i < MAX_SPLASH; i++) {
+        sPos[i * 3 + 1] = -9999;
+        sAlpha[i] = 0;
+      }
+
+      splashGeo.setAttribute('position', new THREE.BufferAttribute(sPos, 3));
+      splashGeo.setAttribute('aSize', new THREE.BufferAttribute(sSize, 1));
+      splashGeo.setAttribute('aAlpha', new THREE.BufferAttribute(sAlpha, 1));
+
+      const splashMat = new THREE.ShaderMaterial({
+        transparent: true,
+        depthWrite: false,
+        uniforms: {
+          uPixelRatio: { value: state.dpr },
+          uColor: { value: new THREE.Color(0xeaf8ff) }
+        },
+        vertexShader: `
+          attribute float aSize;
+          attribute float aAlpha;
+          varying float vAlpha;
+          uniform float uPixelRatio;
+          void main() {
+            vAlpha = aAlpha;
+            vec4 mv = modelViewMatrix * vec4(position, 1.0);
+            gl_PointSize = aSize * uPixelRatio * (260.0 / max(-mv.z, 0.5));
+            gl_Position = projectionMatrix * mv;
+          }
+        `,
+        fragmentShader: `
+          varying float vAlpha;
+          uniform vec3 uColor;
+          void main() {
+            if (vAlpha <= 0.01) discard;
+            float d = length(gl_PointCoord - vec2(0.5));
+            if (d > 0.5) discard;
+            float soft = smoothstep(0.5, 0.12, d);
+            gl_FragColor = vec4(uColor, soft * vAlpha);
+          }
+        `
+      });
+
+      const splashPoints = new THREE.Points(splashGeo, splashMat);
+      splashPoints.frustumCulled = false;
+      splashPoints.renderOrder = 2;
+      scene.add(splashPoints);
+
+      let splashCursor = 0;
+      function spawnSplash(x, y, z, vx, vy, vz, size, life) {
+        if (state.particlesPct <= 0) return;
+        const i = splashCursor;
+        splashCursor = (splashCursor + 1) % MAX_SPLASH;
+        sPos[i * 3] = x;
+        sPos[i * 3 + 1] = y;
+        sPos[i * 3 + 2] = z;
+        sVel[i * 3] = vx;
+        sVel[i * 3 + 1] = vy;
+        sVel[i * 3 + 2] = vz;
+        sLife[i] = life;
+        sMaxLife[i] = life;
+        sSize[i] = size;
+        sAlpha[i] = 0.9;
+      }
+
+      function spawnSplashBurst(x, y, z, count, power, baseVx = 0, baseVz = 0) {
+        const scaledCount = Math.round(count * (state.particlesPct / 100));
+        for (let i = 0; i < scaledCount; i++) {
+          const ang = Math.random() * Math.PI * 2;
+          const spd = (0.35 + Math.random() * 0.85) * power;
+          spawnSplash(
+            x + (Math.random() - 0.5) * 0.7,
+            y + Math.random() * 0.25,
+            z + (Math.random() - 0.5) * 0.7,
+            baseVx * 0.35 + Math.cos(ang) * spd * 0.85,
+            (0.6 + Math.random() * 0.9) * power * 1.15,
+            baseVz * 0.35 + Math.sin(ang) * spd * 0.85,
+            0.22 + Math.random() * 0.34,
+            0.45 + Math.random() * 0.55
+          );
+        }
+      }
+
+      let audioCtx = null;
+      let windMasterGain = null;
+
+      function initWindAudio() {
+        if (audioCtx) return;
+        const AudioCtor = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtor) return;
+        audioCtx = new AudioCtor();
+
+        const len = audioCtx.sampleRate * 4;
+        const buffer = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
+        const data = buffer.getChannelData(0);
+        let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+        for (let i = 0; i < len; i++) {
+          const white = Math.random() * 2 - 1;
+          b0 = 0.99886 * b0 + white * 0.0555179;
+          b1 = 0.99332 * b1 + white * 0.0750759;
+          b2 = 0.96900 * b2 + white * 0.1538520;
+          b3 = 0.86650 * b3 + white * 0.3104856;
+          b4 = 0.55000 * b4 + white * 0.5329522;
+          b5 = -0.7616 * b5 - white * 0.0168980;
+          data[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.045;
+          b6 = white * 0.115926;
+        }
+
+        windMasterGain = audioCtx.createGain();
+        windMasterGain.gain.value = 0.0;
+        windMasterGain.connect(audioCtx.destination);
+
+        const srcLow = audioCtx.createBufferSource();
+        srcLow.buffer = buffer;
+        srcLow.loop = true;
+        const filterLow = audioCtx.createBiquadFilter();
+        filterLow.type = 'bandpass';
+        filterLow.frequency.value = 260;
+        filterLow.Q.value = 1.1;
+
+        const lfoLow = audioCtx.createOscillator();
+        lfoLow.frequency.value = 0.085;
+        const lfoLowDepth = audioCtx.createGain();
+        lfoLowDepth.gain.value = 110;
+        lfoLow.connect(lfoLowDepth);
+        lfoLowDepth.connect(filterLow.frequency);
+
+        const gainLow = audioCtx.createGain();
+        gainLow.gain.value = 0.65;
+        srcLow.connect(filterLow);
+        filterLow.connect(gainLow);
+        gainLow.connect(windMasterGain);
+
+        const srcHigh = audioCtx.createBufferSource();
+        srcHigh.buffer = buffer;
+        srcHigh.loop = true;
+        const filterHigh = audioCtx.createBiquadFilter();
+        filterHigh.type = 'bandpass';
+        filterHigh.frequency.value = 620;
+        filterHigh.Q.value = 2.4;
+
+        const lfoHigh = audioCtx.createOscillator();
+        lfoHigh.frequency.value = 0.135;
+        const lfoHighDepth = audioCtx.createGain();
+        lfoHighDepth.gain.value = 260;
+        lfoHigh.connect(lfoHighDepth);
+        lfoHighDepth.connect(filterHigh.frequency);
+
+        const gustGain = audioCtx.createGain();
+        gustGain.gain.value = 0.25;
+        const lfoGust = audioCtx.createOscillator();
+        lfoGust.frequency.value = 0.11;
+        const lfoGustDepth = audioCtx.createGain();
+        lfoGustDepth.gain.value = 0.18;
+        lfoGust.connect(lfoGustDepth);
+        lfoGustDepth.connect(gustGain.gain);
+
+        srcHigh.connect(filterHigh);
+        filterHigh.connect(gustGain);
+        gustGain.connect(windMasterGain);
+
+        srcLow.start();
+        srcHigh.start(0, 1.5);
+        lfoLow.start();
+        lfoHigh.start();
+        lfoGust.start();
+      }
+
+      const input = {
+        joyX: 0,
+        joyY: 0,
+        keys: {},
+        camYaw: Math.PI,
+        camPitch: 0.34,
+        camDist: 7.2
+      };
+
+      window.addEventListener('keydown', (e) => { input.keys[e.code] = true; });
+      window.addEventListener('keyup', (e) => { input.keys[e.code] = false; });
+
+      const joyZone = document.getElementById('joystick-zone');
+      const joyStick = document.getElementById('joystick-stick');
+      let joyTouchId = null;
+      let joyMouseDown = false;
+      const JOY_BASE_RADIUS = 44;
+
+      function updateJoystickFromPoint(clientX, clientY) {
+        const rect = joyZone.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        let dx = clientX - cx;
+        let dy = clientY - cy;
+        const effRadius = JOY_BASE_RADIUS * state.joyScale;
+        const dist = Math.hypot(dx, dy);
+        if (dist > effRadius) {
+          dx = (dx / dist) * effRadius;
+          dy = (dy / dist) * effRadius;
+        }
+        const localDx = dx / state.joyScale;
+        const localDy = dy / state.joyScale;
+        joyStick.style.transform = `translate(${localDx}px, ${localDy}px)`;
+        input.joyX = dx / effRadius;
+        input.joyY = -dy / effRadius;
+      }
+
+      function resetJoystick() {
+        joyTouchId = null;
+        joyMouseDown = false;
+        joyStick.style.transform = 'translate(0px, 0px)';
+        input.joyX = 0;
+        input.joyY = 0;
+      }
+
+      joyZone.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const t = e.changedTouches[0];
+        joyTouchId = t.identifier;
+        updateJoystickFromPoint(t.clientX, t.clientY);
+      }, { passive: false });
+
+      window.addEventListener('touchmove', (e) => {
+        if (joyTouchId !== null) {
+          for (let i = 0; i < e.changedTouches.length; i++) {
+            if (e.changedTouches[i].identifier === joyTouchId) {
+              updateJoystickFromPoint(e.changedTouches[i].clientX, e.changedTouches[i].clientY);
+            }
+          }
+        }
+      }, { passive: false });
+
+      window.addEventListener('touchend', (e) => {
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          if (e.changedTouches[i].identifier === joyTouchId) resetJoystick();
+        }
+      });
+      window.addEventListener('touchcancel', resetJoystick);
+
+      joyZone.addEventListener('mousedown', (e) => {
+        e.stopPropagation();
+        joyMouseDown = true;
+        updateJoystickFromPoint(e.clientX, e.clientY);
+      });
+      window.addEventListener('mousemove', (e) => {
+        if (joyMouseDown) updateJoystickFromPoint(e.clientX, e.clientY);
+      });
+      window.addEventListener('mouseup', () => {
+        if (joyMouseDown) resetJoystick();
+      });
+
+      const domEl = renderer.domElement;
+      const activeCamTouches = new Map();
+      let lastPinchDist = null;
+      let camMouseDragging = false;
+      let prevMouseX = 0, prevMouseY = 0;
+
+      domEl.addEventListener('mousedown', (e) => {
+        camMouseDragging = true;
+        prevMouseX = e.clientX;
+        prevMouseY = e.clientY;
+      });
+      window.addEventListener('mousemove', (e) => {
+        if (!camMouseDragging || joyMouseDown) return;
+        const dx = e.clientX - prevMouseX;
+        const dy = e.clientY - prevMouseY;
+        prevMouseX = e.clientX;
+        prevMouseY = e.clientY;
+        input.camYaw -= dx * 0.0065;
+        input.camPitch = THREE.MathUtils.clamp(input.camPitch + dy * 0.0055, -0.15, 1.35);
+      });
+      window.addEventListener('mouseup', () => { camMouseDragging = false; });
+
+      domEl.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        input.camDist = THREE.MathUtils.clamp(input.camDist + e.deltaY * 0.006, 2.5, 28.0);
+      }, { passive: false });
+
+      domEl.addEventListener('touchstart', (e) => {
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          const t = e.changedTouches[i];
+          if (t.identifier !== joyTouchId) {
+            activeCamTouches.set(t.identifier, { x: t.clientX, y: t.clientY });
+          }
+        }
+        if (activeCamTouches.size === 2) {
+          const pts = Array.from(activeCamTouches.values());
+          lastPinchDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+        }
+      }, { passive: true });
+
+      domEl.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        if (activeCamTouches.size === 1) {
+          for (let i = 0; i < e.changedTouches.length; i++) {
+            const t = e.changedTouches[i];
+            if (activeCamTouches.has(t.identifier)) {
+              const prev = activeCamTouches.get(t.identifier);
+              const dx = t.clientX - prev.x;
+              const dy = t.clientY - prev.y;
+              input.camYaw -= dx * 0.007;
+              input.camPitch = THREE.MathUtils.clamp(input.camPitch + dy * 0.006, -0.15, 1.35);
+              activeCamTouches.set(t.identifier, { x: t.clientX, y: t.clientY });
+            }
+          }
+        } else if (activeCamTouches.size === 2) {
+          for (let i = 0; i < e.changedTouches.length; i++) {
+            const t = e.changedTouches[i];
+            if (activeCamTouches.has(t.identifier)) {
+              activeCamTouches.set(t.identifier, { x: t.clientX, y: t.clientY });
+            }
+          }
+          const pts = Array.from(activeCamTouches.values());
+          const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+          if (lastPinchDist !== null) {
+            const delta = lastPinchDist - dist;
+            input.camDist = THREE.MathUtils.clamp(input.camDist + delta * 0.025, 2.5, 28.0);
+          }
+          lastPinchDist = dist;
+        }
+      }, { passive: false });
+
+      function removeCamTouches(e) {
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          activeCamTouches.delete(e.changedTouches[i].identifier);
+        }
+        if (activeCamTouches.size < 2) lastPinchDist = null;
+      }
+      domEl.addEventListener('touchend', removeCamTouches);
+      domEl.addEventListener('touchcancel', removeCamTouches);
+
+      const boatPhys = {
+        x: 0,
+        y: 0,
+        z: 0,
+        vy: 0,
+        vx: 0,
+        vz: 0,
+        yaw: 0,
+        yawVel: 0,
+        speed: 0,
+        pitch: 0,
+        roll: 0,
+        rowPhase: 0,
+        inAir: false
+      };
+
+      const settingsBtn = document.getElementById('settings-btn');
+      const closeSettingsBtn = document.getElementById('close-settings');
+      const settingsPanel = document.getElementById('settings-panel');
+      const audioBtn = document.getElementById('audio-btn');
+      const chkAudio = document.getElementById('chk-audio');
+      const hudLeft = document.getElementById('hud-left');
+
+      settingsBtn.addEventListener('click', () => settingsPanel.classList.toggle('hidden'));
+      closeSettingsBtn.addEventListener('click', () => settingsPanel.classList.add('hidden'));
+
+      function setAudioEnabled(enabled) {
+        if (enabled) {
+          initWindAudio();
+          if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+        }
+        state.audioEnabled = enabled;
+        audioBtn.textContent = enabled ? '🔊' : '🔇';
+        chkAudio.checked = enabled;
+        if (windMasterGain && audioCtx) {
+          windMasterGain.gain.setTargetAtTime(enabled ? 0.42 : 0.0, audioCtx.currentTime, 0.18);
+        }
+      }
+
+      audioBtn.addEventListener('click', () => setAudioEnabled(!state.audioEnabled));
+      chkAudio.addEventListener('change', (e) => setAudioEnabled(e.target.checked));
+
+      document.getElementById('chk-show-audio-btn').addEventListener('change', (e) => {
+        audioBtn.style.display = e.target.checked ? 'flex' : 'none';
+      });
+
+      document.getElementById('chk-minimal-btn').addEventListener('change', (e) => {
+        if (e.target.checked) {
+          settingsBtn.textContent = '⚙️';
+          settingsBtn.classList.add('square');
+        } else {
+          settingsBtn.textContent = '⚙️ Настройки';
+          settingsBtn.classList.remove('square');
+        }
+      });
+
+      function bindSlider(id, valId, prop, fmt, onChange) {
+        const el = document.getElementById(id);
+        const valEl = document.getElementById(valId);
+        el.addEventListener('input', () => {
+          const v = parseFloat(el.value);
+          state[prop] = v;
+          valEl.textContent = fmt(v);
+          if (onChange) onChange(v);
+        });
+      }
+
+      bindSlider('inp-waveHeight', 'val-waveHeight', 'waveHeight', v => v.toFixed(2), v => {
+        oceanUniforms.uWaveHeight.value = v;
+      });
+      bindSlider('inp-waveFreq', 'val-waveFreq', 'waveFreq', v => `${v.toFixed(2)}x`, v => {
+        oceanUniforms.uWaveFreq.value = v;
+      });
+      bindSlider('inp-waveSpeed', 'val-waveSpeed', 'waveSpeed', v => v.toFixed(2), v => {
+        oceanUniforms.uWaveSpeed.value = v;
+      });
+      bindSlider('inp-transparency', 'val-transparency', 'transparency', v => `${v}%`, v => {
+        state.transparency = v / 100;
+        oceanUniforms.uTransparency.value = state.transparency;
+      });
+      bindSlider('inp-foam', 'val-foam', 'foam', v => v.toFixed(2), v => {
+        oceanUniforms.uFoam.value = v;
+      });
+      bindSlider('inp-sunElev', 'val-sunElev', 'sunElev', v => `${v}°`);
+      bindSlider('inp-sunAzim', 'val-sunAzim', 'sunAzim', v => `${v}°`);
+      bindSlider('inp-clouds', 'val-clouds', 'clouds', v => v.toFixed(2), v => {
+        skyMat.uniforms.uClouds.value = v;
+        oceanUniforms.uClouds.value = v;
+      });
+      bindSlider('inp-boatSpeed', 'val-boatSpeed', 'boatSpeed', v => `${v.toFixed(1)}x`);
+      bindSlider('inp-particles', 'val-particles', 'particlesPct', v => `${v}%`);
+      bindSlider('inp-joyScale', 'val-joyScale', 'joyScale', v => `${v}%`, v => {
+        state.joyScale = v / 100;
+        joyZone.style.transform = `scale(${state.joyScale})`;
+      });
+      bindSlider('inp-joyTransp', 'val-joyTransp', 'joyTransp', v => `${v}%`, v => {
+        state.joyTransp = v / 100;
+        joyZone.style.opacity = (1.0 - state.joyTransp).toFixed(2);
+      });
+      bindSlider('inp-dpr', 'val-dpr', 'dpr', v => `${v.toFixed(1)}x`, v => {
+        renderer.setPixelRatio(v);
+        splashMat.uniforms.uPixelRatio.value = v;
+      });
+
+      document.getElementById('chk-hud').addEventListener('change', (e) => {
+        state.showHud = e.target.checked;
+        hudLeft.classList.toggle('hidden', !state.showHud);
+      });
+      document.getElementById('chk-fps').addEventListener('change', (e) => {
+        state.showFps = e.target.checked;
+        document.getElementById('hud-fps-line').style.display = state.showFps ? 'block' : 'none';
+      });
+      document.getElementById('chk-shadows').addEventListener('change', (e) => {
+        state.shadows = e.target.checked;
+        renderer.shadowMap.enabled = state.shadows;
+        sunLight.castShadow = state.shadows;
+        state.detailNormals = state.shadows ? 1.0 : 0.4;
+        oceanUniforms.uDetailNormals.value = state.detailNormals;
+      });
+      document.getElementById('chk-autofollow').addEventListener('change', (e) => {
+        state.autoFollow = e.target.checked;
+      });
+
+      const presetButtons = document.querySelectorAll('.preset-btn');
+      presetButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const key = btn.dataset.preset;
+          const p = PRESETS[key];
+          if (!p) return;
+          presetButtons.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+
+          state.preset = key;
+          state.particlesPct = p.particlesPct;
+          state.dpr = p.dpr;
+          state.shadows = p.shadows;
+          state.detailNormals = p.detailNormals;
+
+          document.getElementById('inp-particles').value = p.particlesPct;
+          document.getElementById('val-particles').textContent = `${p.particlesPct}%`;
+          document.getElementById('inp-dpr').value = p.dpr.toFixed(1);
+          document.getElementById('val-dpr').textContent = `${p.dpr.toFixed(1)}x`;
+          document.getElementById('chk-shadows').checked = p.shadows;
+          document.getElementById('hud-quality').textContent = p.label;
+
+          renderer.setPixelRatio(p.dpr);
+          splashMat.uniforms.uPixelRatio.value = p.dpr;
+          renderer.shadowMap.enabled = p.shadows;
+          sunLight.castShadow = p.shadows;
+          oceanUniforms.uDetailNormals.value = p.detailNormals;
+
+          if (state.oceanSegs !== p.segs) {
+            state.oceanSegs = p.segs;
+            rebuildOceanMesh(p.segs);
+          }
+        });
+      });
+
+      function updateLighting() {
+        const elev = THREE.MathUtils.degToRad(state.sunElev);
+        const azim = THREE.MathUtils.degToRad(state.sunAzim);
+        const sunDir = new THREE.Vector3(
+          Math.cos(elev) * Math.sin(azim),
+          Math.sin(elev),
+          Math.cos(elev) * Math.cos(azim)
+        ).normalize();
+
+        skyMat.uniforms.uSunDir.value.copy(sunDir);
+        oceanUniforms.uSunDir.value.copy(sunDir);
+
+        sunLight.position.set(
+          boatPhys.x + sunDir.x * 18,
+          boatPhys.y + sunDir.y * 18,
+          boatPhys.z + sunDir.z * 18
+        );
+        sunLight.target.position.set(boatPhys.x, boatPhys.y, boatPhys.z);
+
+        const day = THREE.MathUtils.clamp(sunDir.y * 2.5 + 0.15, 0.0, 1.0);
+        const sunset = Math.exp(-Math.pow(Math.abs(sunDir.y - 0.08) * 4.5, 2.0));
+        sunLight.intensity = 0.25 + 2.3 * day;
+        sunLight.color.setRGB(
+          1.0,
+          THREE.MathUtils.lerp(0.55, 0.96, THREE.MathUtils.clamp(sunDir.y * 3.0, 0, 1)),
+          THREE.MathUtils.lerp(0.28, 0.88, THREE.MathUtils.clamp(sunDir.y * 3.0, 0, 1))
+        );
+        hemiLight.intensity = 0.25 + 0.75 * day;
+        hemiLight.color.setRGB(
+          THREE.MathUtils.lerp(0.15, 0.56 + sunset * 0.3, day),
+          THREE.MathUtils.lerp(0.22, 0.82, day),
+          THREE.MathUtils.lerp(0.38, 1.0, day)
+        );
+      }
+
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+
+      const hudSpeed = document.getElementById('hud-speed');
+      const hudWave = document.getElementById('hud-wave');
+      const hudFps = document.getElementById('hud-fps');
+
+      let simTime = 0;
+      let lastTime = performance.now();
+      let fpsAccum = 0, fpsFrames = 0;
+      let wakeTimer = 0;
+
+      function animate(now) {
+        requestAnimationFrame(animate);
+        const dt = Math.min((now - lastTime) / 1000, 0.05);
+        lastTime = now;
+        simTime += dt;
+
+        fpsAccum += dt;
+        fpsFrames++;
+        if (fpsAccum >= 0.4) {
+          hudFps.textContent = Math.round(fpsFrames / fpsAccum);
+          fpsAccum = 0;
+          fpsFrames = 0;
+        }
+
+        let throttle = input.joyY;
+        let steer = -input.joyX;
+
+        if (input.keys['KeyW'] || input.keys['ArrowUp']) throttle += 1;
+        if (input.keys['KeyS'] || input.keys['ArrowDown']) throttle -= 1;
+        if (input.keys['KeyA'] || input.keys['ArrowLeft']) steer += 1;
+        if (input.keys['KeyD'] || input.keys['ArrowRight']) steer -= 1;
+
+        throttle = THREE.MathUtils.clamp(throttle, -1, 1);
+        steer = THREE.MathUtils.clamp(steer, -1, 1);
+
+        const maxSpd = 9.5 * state.boatSpeed;
+        const targetSpd = throttle * maxSpd;
+        const accelRate = Math.abs(throttle) > 0.05 ? 4.2 : 1.6;
+        boatPhys.speed = THREE.MathUtils.lerp(boatPhys.speed, targetSpd, 1 - Math.exp(-accelRate * dt));
+
+        const turnAuthority = 1.65 * (0.55 + 0.45 * Math.min(1, Math.abs(boatPhys.speed) / 3.0));
+        boatPhys.yawVel = THREE.MathUtils.lerp(boatPhys.yawVel, steer * turnAuthority, 1 - Math.exp(-6.0 * dt));
+        boatPhys.yaw += boatPhys.yawVel * dt;
+
+        const fwdX = Math.sin(boatPhys.yaw);
+        const fwdZ = Math.cos(boatPhys.yaw);
+        const rightX = -fwdZ;
+        const rightZ = fwdX;
+
+        boatPhys.vx = fwdX * boatPhys.speed;
+        boatPhys.vz = fwdZ * boatPhys.speed;
+        boatPhys.x += boatPhys.vx * dt;
+        boatPhys.z += boatPhys.vz * dt;
+
+        const halfL = 0.72;
+        const halfW = 0.55;
+        const bow   = getWaveSurface(boatPhys.x + fwdX * halfL,   boatPhys.z + fwdZ * halfL,   simTime);
+        const stern = getWaveSurface(boatPhys.x - fwdX * halfL,   boatPhys.z - fwdZ * halfL,   simTime);
+        const port  = getWaveSurface(boatPhys.x + rightX * halfW, boatPhys.z + rightZ * halfW, simTime);
+        const stbd  = getWaveSurface(boatPhys.x - rightX * halfW, boatPhys.z - rightZ * halfW, simTime);
+        const centerSurf = getWaveSurface(boatPhys.x, boatPhys.z, simTime);
+
+        const targetWaterY = (bow.y + stern.y + port.y + stbd.y + centerSurf.y) * 0.2 + 0.025;
+
+        const submergence = targetWaterY - boatPhys.y;
+        if (submergence > 0) {
+          if (boatPhys.inAir && boatPhys.vy < -2.0) {
+            const slam = Math.min(5.5, Math.abs(boatPhys.vy));
+            spawnSplashBurst(boatPhys.x, targetWaterY, boatPhys.z, Math.round(28 * slam), 1.4 + slam * 0.65, boatPhys.vx, boatPhys.vz);
+          }
+          boatPhys.inAir = false;
+          const buoyForce = submergence * 38.0;
+          boatPhys.vy += (buoyForce - 9.81 - boatPhys.vy * 6.5) * dt;
+        } else {
+          if (submergence < -0.22) boatPhys.inAir = true;
+          boatPhys.vy -= 9.81 * dt;
+        }
+        boatPhys.y += boatPhys.vy * dt;
+
+        const bowSubmerge = bow.y - (boatPhys.y - Math.sin(boatPhys.pitch) * halfL);
+        if (bowSubmerge > 0.14 && Math.abs(boatPhys.speed) > 1.8) {
+          if (Math.random() < 0.45) {
+            spawnSplashBurst(
+              boatPhys.x + fwdX * 0.85,
+              bow.y + 0.05,
+              boatPhys.z + fwdZ * 0.85,
+              6 + Math.round(Math.abs(boatPhys.speed) * 1.3),
+              1.1 + bowSubmerge * 2.5,
+              boatPhys.vx,
+              boatPhys.vz
+            );
+          }
+        }
+
+        const targetPitch = Math.atan2(stern.y - bow.y, halfL * 2);
+        const targetRoll  = Math.atan2(port.y - stbd.y, halfW * 2);
+        boatPhys.pitch = THREE.MathUtils.lerp(boatPhys.pitch, targetPitch, 1 - Math.exp(-8.5 * dt));
+        boatPhys.roll  = THREE.MathUtils.lerp(boatPhys.roll, targetRoll + steer * 0.12, 1 - Math.exp(-8.5 * dt));
+
+        boatRoot.position.set(boatPhys.x, boatPhys.y, boatPhys.z);
+        boatRoot.rotation.y = boatPhys.yaw;
+        boatTilt.rotation.x = boatPhys.pitch;
+        boatTilt.rotation.z = boatPhys.roll;
+
+        const rowActivity = Math.max(Math.abs(throttle), Math.abs(steer) * 0.7);
+        if (rowActivity > 0.05 || Math.abs(boatPhys.speed) > 0.4) {
+          boatPhys.rowPhase += dt * (4.2 + Math.abs(boatPhys.speed) * 0.65);
+        }
+        const ampSwing = 0.44 * rowActivity + 0.08 * Math.min(1, Math.abs(boatPhys.speed));
+        const leftSweep  = Math.sin(boatPhys.rowPhase) * ampSwing;
+        const rightSweep = Math.sin(boatPhys.rowPhase + steer * 0.5) * ampSwing;
+        const leftDip    = Math.cos(boatPhys.rowPhase) * 0.24 * rowActivity;
+        const rightDip   = Math.cos(boatPhys.rowPhase + steer * 0.5) * 0.24 * rowActivity;
+
+        leftOar.rotation.y  = leftSweep;
+        leftOar.rotation.z  = -leftDip;
+        rightOar.rotation.y = -rightSweep;
+        rightOar.rotation.z = rightDip;
+
+        leftArm.rotation.x = -0.95 + leftSweep * 0.55;
+        rightArm.rotation.x = -0.95 + rightSweep * 0.55;
+        torso.rotation.x = 0.06 + Math.cos(boatPhys.rowPhase) * 0.08 * rowActivity;
+        head.rotation.y = THREE.MathUtils.lerp(head.rotation.y, steer * 0.35, 1 - Math.exp(-6 * dt));
+
+        wakeTimer += dt * (1.5 + Math.abs(boatPhys.speed) * 3.8);
+        if (wakeTimer >= 1.0 && !boatPhys.inAir && state.particlesPct > 0) {
+          wakeTimer = 0;
+          const spdFactor = Math.abs(boatPhys.speed);
+          if (spdFactor > 0.6) {
+            for (let side of [-1, 1]) {
+              const wx = boatPhys.x - fwdX * 0.8 + rightX * side * (0.55 + Math.random() * 0.2);
+              const wz = boatPhys.z - fwdZ * 0.8 + rightZ * side * (0.55 + Math.random() * 0.2);
+              const wy = getWaveSurface(wx, wz, simTime).y + 0.05;
+              spawnSplash(
+                wx, wy, wz,
+                rightX * side * (0.4 + spdFactor * 0.12) + (Math.random() - 0.5) * 0.4,
+                0.4 + Math.random() * (0.4 + spdFactor * 0.15),
+                rightZ * side * (0.4 + spdFactor * 0.12) + (Math.random() - 0.5) * 0.4,
+                0.28 + Math.random() * 0.28,
+                0.55 + Math.random() * 0.45
+              );
+            }
+          }
+        }
+
+        let anyDirty = false;
+        for (let i = 0; i < MAX_SPLASH; i++) {
+          if (sLife[i] > 0) {
+            anyDirty = true;
+            sLife[i] -= dt;
+            if (sLife[i] <= 0) {
+              sAlpha[i] = 0;
+              sPos[i * 3 + 1] = -9999;
+            } else {
+              sVel[i * 3 + 1] -= 9.81 * dt;
+              sPos[i * 3]     += sVel[i * 3] * dt;
+              sPos[i * 3 + 1] += sVel[i * 3 + 1] * dt;
+              sPos[i * 3 + 2] += sVel[i * 3 + 2] * dt;
+              const t = sLife[i] / sMaxLife[i];
+              sAlpha[i] = t * 0.88;
+            }
+          }
+        }
+        if (anyDirty) {
+          splashGeo.attributes.position.needsUpdate = true;
+          splashGeo.attributes.aAlpha.needsUpdate = true;
+          splashGeo.attributes.aSize.needsUpdate = true;
+        }
+
+        if (state.autoFollow && Math.abs(boatPhys.speed) > 0.4 && !camMouseDragging && activeCamTouches.size === 0) {
+          const desiredYaw = boatPhys.yaw + Math.PI;
+          let diff = desiredYaw - input.camYaw;
+          while (diff > Math.PI) diff -= Math.PI * 2;
+          while (diff < -Math.PI) diff += Math.PI * 2;
+          input.camYaw += diff * (1 - Math.exp(-2.2 * dt));
+        }
+
+        const horizDist = Math.cos(input.camPitch) * input.camDist;
+        const camX = boatPhys.x + Math.sin(input.camYaw) * horizDist;
+        const camZ = boatPhys.z + Math.cos(input.camYaw) * horizDist;
+        let camY   = boatPhys.y + 0.75 + Math.sin(input.camPitch) * input.camDist;
+
+        const camWaveY = getWaveSurface(camX, camZ, simTime).y;
+        if (camY < camWaveY + 0.75) camY = camWaveY + 0.75;
+
+        camera.position.set(camX, camY, camZ);
+        camera.lookAt(boatPhys.x, boatPhys.y + 0.65, boatPhys.z);
+
+        oceanMesh.position.set(boatPhys.x, 0, boatPhys.z);
+        skyMesh.position.copy(camera.position);
+        oceanUniforms.uTime.value = simTime;
+        skyMat.uniforms.uTime.value = simTime;
+        oceanUniforms.uBoatPos.value.set(boatPhys.x, boatPhys.y, boatPhys.z);
+
+        updateLighting();
+
+        if (state.showHud) {
+          hudSpeed.textContent = Math.abs(boatPhys.speed).toFixed(1);
+          hudWave.textContent = (state.waveHeight * 1.9).toFixed(1);
+        }
+
+        if (state.audioEnabled && windMasterGain && audioCtx) {
+          const windVol = 0.28 + Math.min(0.32, state.waveHeight * 0.05) + Math.min(0.22, Math.abs(boatPhys.speed) * 0.02);
+          windMasterGain.gain.setTargetAtTime(windVol, audioCtx.currentTime, 0.2);
+        }
+
+        renderer.render(scene, camera);
+      }
+
+      requestAnimationFrame(animate);
+    })();
+  </script>
+</body>
+</html>
