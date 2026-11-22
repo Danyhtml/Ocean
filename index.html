@@ -42,7 +42,6 @@
       touch-action: none;
     }
 
-    /* HUD */
     .hud-top-left {
       position: fixed;
       top: 14px;
@@ -119,7 +118,6 @@
       background: rgba(22, 38, 56, 0.82);
     }
 
-    /* Settings Panel */
     #settings-panel {
       position: fixed;
       top: 68px;
@@ -229,7 +227,6 @@
       cursor: pointer;
     }
 
-    /* PWA Install Button */
     .install-pwa-btn {
       width: 100%;
       margin-top: 6px;
@@ -268,7 +265,6 @@
       display: none;
     }
 
-    /* Virtual Joystick */
     #joystick-zone {
       position: fixed;
       bottom: 24px;
@@ -313,7 +309,6 @@
 <body>
   <div id="canvas-container"></div>
 
-  <!-- HUD Info -->
   <div class="hud-top-left" id="hud-left">
     <div class="hud-pill">
       <div>Скорость: <strong id="hud-speed">0.0</strong> м/с &nbsp;|&nbsp; Высота волны: <strong id="hud-wave">1.2</strong> м</div>
@@ -322,13 +317,11 @@
     </div>
   </div>
 
-  <!-- Top-Right Buttons -->
   <div class="hud-top-right">
     <button class="icon-btn square" id="audio-btn" title="Звук ветра">🔇</button>
     <button class="icon-btn" id="settings-btn" title="Настройки">⚙️ Настройки</button>
   </div>
 
-  <!-- Settings Panel -->
   <div id="settings-panel" class="hidden">
     <div class="panel-title">
       <span>Настройки океана и графики</span>
@@ -341,6 +334,12 @@
       <button class="preset-btn" data-preset="high">✨ Высокое</button>
       <button class="preset-btn" data-preset="medium">⚖️ Среднее</button>
       <button class="preset-btn" data-preset="low">🔋 Слабый / Эконом</button>
+    </div>
+
+    <div class="section-label">Персонаж (Скин)</div>
+    <div class="presets-grid">
+      <button class="preset-btn active" data-skin="steve">🧑 Стив</button>
+      <button class="preset-btn" data-skin="alex">👧 Алекс</button>
     </div>
 
     <div class="section-label">Океан и волны</div>
@@ -438,7 +437,6 @@
     <div id="pwa-hint-box" class="pwa-hint hidden"></div>
   </div>
 
-  <!-- Virtual Touch Joystick -->
   <div id="joystick-zone" style="opacity: 0.85;">
     <div id="joystick-base">
       <div id="joystick-stick"></div>
@@ -595,6 +593,7 @@
 
       const state = {
         preset: 'ultra',
+        skin: 'steve',
         waveHeight: 1.20,
         waveFreq: 1.00,
         waveSpeed: 1.00,
@@ -858,6 +857,179 @@
         };
       }
 
+      function createAlexTextures() {
+        const skinPal = {
+          'S': '#f7d0b2', 's': '#ebc09e', 'd': '#dfb08c', 'l': '#fce0c8',
+          'H': '#d96523', 'h': '#be5016', 'k': '#eb7c36',
+          'W': '#ffffff', 'G': '#469428',
+          'N': '#e0ae8a', 'L': '#d67d75'
+        };
+
+        const headFront = createPixelTexture(8, 8, (ctx) => fillGrid(ctx, [
+          'HHkHHHkH',
+          'HHHHkHHH',
+          'HHHSSSSH',
+          'HSSSSSSH',
+          'SWGllGWS',
+          'SSSNNSsS',
+          'SSsLLsSS',
+          'SSSSSSSS'
+        ], skinPal));
+
+        const headBack = createPixelTexture(8, 8, (ctx) => fillGrid(ctx, [
+          'HHkHHHHH',
+          'HHHHhHHH',
+          'HHkHHkHH',
+          'HhHHHHhH',
+          'HHHHHHHH',
+          'HHkHHhHH',
+          'HhHHHHHH',
+          'HHhHHhHH'
+        ], skinPal));
+
+        const headTop = createPixelTexture(8, 8, (ctx) => fillGrid(ctx, [
+          'HHkHHHHH',
+          'HHHHHHHH',
+          'HhHHkHHH',
+          'HHHHHHHH',
+          'HHkHHhHH',
+          'HHHHHHHH',
+          'HkHHHHhH',
+          'HHHHHHHH'
+        ], skinPal));
+
+        const headSideR = createPixelTexture(8, 8, (ctx) => fillGrid(ctx, [
+          'HHkHHHHH',
+          'HHHHHHHH',
+          'HHHHHHHS',
+          'HHHHSSSS',
+          'HHHSSSSS',
+          'HHSSSSsS',
+          'HHSSSSSS',
+          'HHsSSSSS'
+        ], skinPal));
+
+        const headSideL = createPixelTexture(8, 8, (ctx) => fillGrid(ctx, [
+          'HHHHHkHH',
+          'HHHHHHHH',
+          'SHHHHHHH',
+          'SSSSHHHH',
+          'SSSSSHHH',
+          'SSsSSSHH',
+          'SSSSSSHH',
+          'SSSSSsHH'
+        ], skinPal));
+
+        const headBottom = createPixelTexture(8, 8, (ctx) => {
+          ctx.fillStyle = '#ebc09e';
+          ctx.fillRect(0, 0, 8, 8);
+        });
+
+        const shirtPal = {
+          'T': '#658b3e', 't': '#537332', 'b': '#759d4a', 'd': '#466328',
+          'B': '#684225', 'Y': '#b38e4d',
+          'S': '#f7d0b2', 's': '#ebc09e',
+          'H': '#d96523', 'h': '#be5016'
+        };
+        const torsoFront = createPixelTexture(8, 12, (ctx) => fillGrid(ctx, [
+          'TTSSssTT',
+          'TTTSSSTT',
+          'TTTTtTTT',
+          'TtTTTTbT',
+          'TTTTTTTT',
+          'TTTtTTTT',
+          'TTbTTTtT',
+          'TTTTTTTT',
+          'TtTTTTTT',
+          'BBBBBBBB',
+          'BBYBBYBB',
+          'dTdTTdTd'
+        ], shirtPal));
+        const torsoBack = createPixelTexture(8, 12, (ctx) => fillGrid(ctx, [
+          'TTTHHHTT',
+          'TTTHhHTT',
+          'TTTTHHTT',
+          'TtTTHHbT',
+          'TTTTTTTT',
+          'TTTtTTTT',
+          'TTbTTTtT',
+          'TTTTTTTT',
+          'TtTTTTTT',
+          'BBBBBBBB',
+          'BBBBBBBB',
+          'dTdTTdTd'
+        ], shirtPal));
+        const torsoSide = createPixelTexture(4, 12, (ctx) => {
+          ctx.fillStyle = '#537332';
+          ctx.fillRect(0, 0, 4, 12);
+          ctx.fillStyle = '#658b3e';
+          ctx.fillRect(1, 1, 2, 8);
+          ctx.fillStyle = '#684225';
+          ctx.fillRect(0, 9, 4, 2);
+        });
+        const torsoTop = createPixelTexture(8, 4, (ctx) => {
+          ctx.fillStyle = '#658b3e';
+          ctx.fillRect(0, 0, 8, 4);
+        });
+
+        const armFront = createPixelTexture(4, 12, (ctx) => fillGrid(ctx, [
+          'TTTT',
+          'TtTT',
+          'TTTT',
+          'dTdT',
+          'SSSS',
+          'sSSS',
+          'SSlS',
+          'SSSS',
+          'SSsS',
+          'SSSS',
+          'sSSs',
+          'SSSS'
+        ], { ...skinPal, ...shirtPal }));
+        const armTop = createPixelTexture(4, 4, (ctx) => {
+          ctx.fillStyle = '#658b3e';
+          ctx.fillRect(0, 0, 4, 4);
+        });
+        const armBottom = createPixelTexture(4, 4, (ctx) => {
+          ctx.fillStyle = '#ebc09e';
+          ctx.fillRect(0, 0, 4, 4);
+        });
+
+        const legPal = {
+          'P': '#543b29', 'p': '#442f20', 'k': '#644833',
+          'B': '#3a3a3a', 'b': '#2b2b2b'
+        };
+        const legFront = createPixelTexture(4, 12, (ctx) => fillGrid(ctx, [
+          'PPPP',
+          'PpPP',
+          'PPkP',
+          'PPPP',
+          'pPPP',
+          'PPPP',
+          'PPpP',
+          'kPPP',
+          'PPPP',
+          'PpPp',
+          'BBBB',
+          'bBBb'
+        ], legPal));
+        const legTop = createPixelTexture(4, 4, (ctx) => {
+          ctx.fillStyle = '#543b29';
+          ctx.fillRect(0, 0, 4, 4);
+        });
+        const legBottom = createPixelTexture(4, 4, (ctx) => {
+          ctx.fillStyle = '#2b2b2b';
+          ctx.fillRect(0, 0, 4, 4);
+        });
+
+        return {
+          head: makePixelBoxMaterials([headSideL, headSideR, headTop, headBottom, headFront, headBack]),
+          torso: makePixelBoxMaterials([torsoSide, torsoSide, torsoTop, torsoTop, torsoFront, torsoBack]),
+          arm: makePixelBoxMaterials([armFront, armFront, armTop, armBottom, armFront, armFront]),
+          leg: makePixelBoxMaterials([legFront, legFront, legTop, legBottom, legFront, legFront])
+        };
+      }
+
       function createOakWoodTexture(w = 16, h = 16) {
         return createPixelTexture(w, h, (ctx) => {
           const shades = ['#9f7e4d', '#8c6d40', '#ab8956', '#7e6036'];
@@ -969,6 +1141,7 @@
       boatTilt.add(boatMeshGroup);
 
       const steveMats = createSteveTextures();
+      const alexMats = createAlexTextures();
       const steveGroup = new THREE.Group();
       steveGroup.position.set(0, 0.08, -2.2 * PX);
 
@@ -1016,6 +1189,24 @@
 
       steveGroup.add(leftLeg, rightLeg, torso, head, leftArm, rightArm);
       boatTilt.add(steveGroup);
+
+      function setCharacterSkin(skinName) {
+        state.skin = skinName;
+        const mats = skinName === 'alex' ? alexMats : steveMats;
+        head.material = mats.head;
+        torso.material = mats.torso;
+        leftArm.material = mats.arm;
+        rightArm.material = mats.arm;
+        leftLeg.material = mats.leg;
+        rightLeg.material = mats.leg;
+
+        const armScaleX = skinName === 'alex' ? 0.75 : 1.0;
+        const armOffsetX = skinName === 'alex' ? 5.5 * PX : 6 * PX;
+        leftArm.scale.x = armScaleX;
+        rightArm.scale.x = armScaleX;
+        leftArm.position.x = armOffsetX;
+        rightArm.position.x = -armOffsetX;
+      }
 
       const WAVES = [
         { dx:  0.92, dz:  0.39, wl: 38.0, amp: 0.42, steep: 0.52 },
@@ -1068,13 +1259,15 @@
 
       const SHARED_SKY_GLSL = `
         float hash21(vec2 p) {
-          p = fract(p * vec2(123.34, 456.21));
-          p += dot(p, p + 45.32);
-          return fract(p.x * p.y);
+          vec2 q = mod(p, 256.0);
+          vec3 p3 = fract(vec3(q.xyx) * 0.1031);
+          p3 += dot(p3, p3.yzx + 33.33);
+          return fract((p3.x + p3.y) * p3.z);
         }
         float noise2(vec2 p) {
-          vec2 i = floor(p);
-          vec2 f = fract(p);
+          vec2 mp = mod(p, 256.0);
+          vec2 i = floor(mp);
+          vec2 f = fract(mp);
           f = f * f * (3.0 - 2.0 * f);
           float a = hash21(i);
           float b = hash21(i + vec2(1.0, 0.0));
@@ -1184,21 +1377,52 @@
       scene.add(skyMesh);
 
       function buildOceanGeometry(segs) {
-        const geo = new THREE.PlaneGeometry(2, 2, segs, segs);
-        geo.rotateX(-Math.PI / 2);
-        const pos = geo.attributes.position;
+        const radSegs = Math.max(32, segs);
+        const angSegs = Math.max(48, Math.round(segs * 0.9));
         const radius = 1450.0;
-        for (let i = 0; i < pos.count; i++) {
-          const u = pos.getX(i);
-          const v = pos.getZ(i);
-          const su = Math.sign(u);
-          const sv = Math.sign(v);
-          const au = Math.abs(u);
-          const av = Math.abs(v);
-          const wx = su * (0.02 * au + 0.98 * Math.pow(au, 4.0)) * radius;
-          const wz = sv * (0.02 * av + 0.98 * Math.pow(av, 4.0)) * radius;
-          pos.setXYZ(i, wx, 0, wz);
+
+        const vertCount = 1 + radSegs * angSegs;
+        const positions = new Float32Array(vertCount * 3);
+        const indices = [];
+
+        positions[0] = 0;
+        positions[1] = 0;
+        positions[2] = 0;
+
+        let ptr = 3;
+        for (let rIdx = 1; rIdx <= radSegs; rIdx++) {
+          const t = rIdx / radSegs;
+          const r = radius * (0.012 * t + 0.988 * Math.pow(t, 3.3));
+          for (let aIdx = 0; aIdx < angSegs; aIdx++) {
+            const theta = (aIdx / angSegs) * Math.PI * 2;
+            positions[ptr++] = Math.cos(theta) * r;
+            positions[ptr++] = 0;
+            positions[ptr++] = Math.sin(theta) * r;
+          }
         }
+
+        for (let aIdx = 0; aIdx < angSegs; aIdx++) {
+          const nextA = (aIdx + 1) % angSegs;
+          indices.push(0, 1 + nextA, 1 + aIdx);
+        }
+
+        for (let rIdx = 1; rIdx < radSegs; rIdx++) {
+          const ringStart = 1 + (rIdx - 1) * angSegs;
+          const nextRingStart = 1 + rIdx * angSegs;
+          for (let aIdx = 0; aIdx < angSegs; aIdx++) {
+            const nextA = (aIdx + 1) % angSegs;
+            const v00 = ringStart + aIdx;
+            const v01 = ringStart + nextA;
+            const v10 = nextRingStart + aIdx;
+            const v11 = nextRingStart + nextA;
+            indices.push(v00, v01, v10);
+            indices.push(v01, v11, v10);
+          }
+        }
+
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geo.setIndex(indices);
         geo.computeBoundingSphere();
         return geo;
       }
@@ -1213,7 +1437,8 @@
         uSunDir: { value: new THREE.Vector3(0, 0.5, 0.8) },
         uClouds: { value: state.clouds },
         uDetailNormals: { value: state.detailNormals },
-        uBoatPos: { value: new THREE.Vector3() }
+        uBoatPos: { value: new THREE.Vector3() },
+        uMeshDensity: { value: 1.0 }
       };
 
       const oceanMat = new THREE.ShaderMaterial({
@@ -1226,17 +1451,22 @@
           uniform float uWaveFreq;
           uniform float uWaveSpeed;
           uniform vec3 uBoatPos;
+          uniform float uMeshDensity;
 
           varying vec3 vWorldPos;
           varying vec3 vWaveNormal;
           varying float vWaveCrest;
 
-          void addGerstner(vec2 dir, float wl, float ampBase, float steep, vec2 xz,
+          void addGerstner(vec2 dir, float wl, float ampBase, float steep, vec2 xz, float distFromBoat,
                            inout vec3 disp, inout vec3 norm, inout float crest) {
+            float wlEff = wl / max(uWaveFreq, 0.2);
+            float lodFade = 1.0 - smoothstep(wlEff * 3.0 * uMeshDensity, wlEff * 7.5 * uMeshDensity, distFromBoat);
+            if (lodFade <= 0.001) return;
+
             float k = (6.2831853 / wl) * uWaveFreq;
-            float amp = ampBase * uWaveHeight;
+            float amp = ampBase * uWaveHeight * lodFade;
             float spd = sqrt(9.81 / k) * uWaveSpeed;
-            float q = steep / max(1.0, 6.0 * k * amp);
+            float q = steep / max(1.0, 6.0 * k * (ampBase * uWaveHeight));
             float phase = k * dot(dir, xz) - spd * uTime;
             float c = cos(phase);
             float s = sin(phase);
@@ -1256,19 +1486,19 @@
           void main() {
             vec4 wp = modelMatrix * vec4(position, 1.0);
             vec2 xz = wp.xz;
+            float distFromBoat = length(xz - uBoatPos.xz);
             vec3 disp = vec3(0.0);
             vec3 norm = vec3(0.0, 1.0, 0.0);
             float crest = 0.0;
 
-            addGerstner(vec2( 0.92,  0.39), 38.0, 0.42,  0.52, xz, disp, norm, crest);
-            addGerstner(vec2( 0.45, -0.89), 25.0, 0.28,  0.48, xz, disp, norm, crest);
-            addGerstner(vec2(-0.68,  0.73), 15.0, 0.16,  0.44, xz, disp, norm, crest);
-            addGerstner(vec2( 0.81, -0.58),  9.5, 0.09,  0.38, xz, disp, norm, crest);
-            addGerstner(vec2(-0.25, -0.97),  6.0, 0.045, 0.32, xz, disp, norm, crest);
-            addGerstner(vec2( 0.15,  0.99),  4.1, 0.025, 0.28, xz, disp, norm, crest);
+            addGerstner(vec2( 0.92,  0.39), 38.0, 0.42,  0.52, xz, distFromBoat, disp, norm, crest);
+            addGerstner(vec2( 0.45, -0.89), 25.0, 0.28,  0.48, xz, distFromBoat, disp, norm, crest);
+            addGerstner(vec2(-0.68,  0.73), 15.0, 0.16,  0.44, xz, distFromBoat, disp, norm, crest);
+            addGerstner(vec2( 0.81, -0.58),  9.5, 0.09,  0.38, xz, distFromBoat, disp, norm, crest);
+            addGerstner(vec2(-0.25, -0.97),  6.0, 0.045, 0.32, xz, distFromBoat, disp, norm, crest);
+            addGerstner(vec2( 0.15,  0.99),  4.1, 0.025, 0.28, xz, distFromBoat, disp, norm, crest);
 
-            float distFromBoat = length(xz - uBoatPos.xz);
-            float waveFade = 1.0 - smoothstep(220.0, 580.0, distFromBoat);
+            float waveFade = 1.0 - smoothstep(180.0, 420.0, distFromBoat);
             disp *= waveFade;
             norm = normalize(mix(vec3(0.0, 1.0, 0.0), norm, waveFade));
             crest *= waveFade;
@@ -1298,10 +1528,15 @@
 
           ${SHARED_SKY_GLSL}
 
-          vec3 getMicroNormal(vec2 p, float dist) {
+          vec3 getMicroNormal(vec2 p, float dist, float viewY) {
             if (uDetailNormals < 0.05) return vec3(0.0, 1.0, 0.0);
-            float fade = 1.0 - smoothstep(25.0, 260.0, dist);
+            float distFade = 1.0 - smoothstep(12.0, 85.0, dist);
+            float grazeFade = smoothstep(0.03, 0.24, viewY);
+            float fade = distFade * grazeFade;
             if (fade < 0.01) return vec3(0.0, 1.0, 0.0);
+
+            float w2 = 1.0 - smoothstep(10.0, 48.0, dist);
+            float w3 = 1.0 - smoothstep(6.0, 24.0, dist);
 
             float fScale = 0.7 + 0.35 * uWaveFreq;
             float e = 0.08;
@@ -1309,9 +1544,9 @@
             vec2 p2 = p * 1.45 * fScale + vec2(-uTime * 0.52, uTime * 0.41);
             vec2 p3 = p * 3.40 * fScale + vec2(uTime * 0.75, -uTime * 0.65);
 
-            float h0 = noise2(p1) * 0.55 + noise2(p2) * 0.30 + noise2(p3) * 0.15;
-            float hx = noise2(p1 + vec2(e, 0.0)) * 0.55 + noise2(p2 + vec2(e * 2.0, 0.0)) * 0.30 + noise2(p3 + vec2(e * 4.0, 0.0)) * 0.15;
-            float hz = noise2(p1 + vec2(0.0, e)) * 0.55 + noise2(p2 + vec2(0.0, e * 2.0)) * 0.30 + noise2(p3 + vec2(0.0, e * 4.0)) * 0.15;
+            float h0 = noise2(p1) * 0.55 + noise2(p2) * 0.30 * w2 + noise2(p3) * 0.15 * w3;
+            float hx = noise2(p1 + vec2(e, 0.0)) * 0.55 + noise2(p2 + vec2(e * 2.0, 0.0)) * 0.30 * w2 + noise2(p3 + vec2(e * 4.0, 0.0)) * 0.15 * w3;
+            float hz = noise2(p1 + vec2(0.0, e)) * 0.55 + noise2(p2 + vec2(0.0, e * 2.0)) * 0.30 * w2 + noise2(p3 + vec2(0.0, e * 4.0)) * 0.15 * w3;
 
             float strength = (0.28 + 0.12 * min(uWaveHeight, 2.5)) * fade * uDetailNormals;
             return normalize(vec3((h0 - hx) / e * strength, 1.0, (h0 - hz) / e * strength));
@@ -1322,8 +1557,13 @@
             float dist = length(cameraPosition - vWorldPos);
             vec3 sunDir = normalize(uSunDir);
 
-            vec3 microN = getMicroNormal(vWorldPos.xz, dist);
-            vec3 N = normalize(vec3(vWaveNormal.x + microN.x * 0.55, vWaveNormal.y, vWaveNormal.z + microN.z * 0.55));
+            float distantCalm = 1.0 - smoothstep(65.0, 230.0, dist);
+            float horizonCalm = smoothstep(0.02, 0.18, max(V.y, 0.0));
+            float normalWeight = clamp(distantCalm * (0.35 + 0.65 * horizonCalm), 0.0, 1.0);
+            vec3 baseN = normalize(mix(vec3(0.0, 1.0, 0.0), vWaveNormal, normalWeight));
+
+            vec3 microN = getMicroNormal(vWorldPos.xz, dist, max(V.y, 0.0));
+            vec3 N = normalize(vec3(baseN.x + microN.x * 0.55, baseN.y, baseN.z + microN.z * 0.55));
 
             vec3 R = reflect(-V, N);
             R.y = max(R.y, 0.02);
@@ -1333,6 +1573,7 @@
             float fresnel = 0.025 + 0.975 * pow(max(1.0 - NdotV, 0.0001), 4.6);
 
             float dayFactor = clamp(sunDir.y * 2.5 + 0.15, 0.0, 1.0);
+            float sunsetFactor = exp(-pow(abs(sunDir.y - 0.08) * 4.5, 2.0));
             vec3 deepColor = mix(vec3(0.005, 0.02, 0.05), vec3(0.01, 0.13, 0.25), dayFactor);
             vec3 sssColor  = mix(vec3(0.01, 0.07, 0.12), vec3(0.04, 0.46, 0.52), dayFactor);
 
@@ -1343,8 +1584,11 @@
 
             vec3 H = normalize(sunDir + V);
             float NdotH = max(dot(N, H), 0.0);
-            float spec1 = pow(max(NdotH, 0.0001), 280.0) * 2.8;
-            float spec2 = pow(max(NdotH, 0.0001), 45.0) * 0.22;
+            float distSpecBlend = smoothstep(20.0, 220.0, dist);
+            float specPow = mix(280.0, 36.0, distSpecBlend);
+            float specFade = 1.0 - smoothstep(140.0, 560.0, dist);
+            float spec1 = pow(max(NdotH, 0.0001), specPow) * mix(2.8, 0.45, distSpecBlend) * specFade;
+            float spec2 = pow(max(NdotH, 0.0001), 45.0) * 0.22 * specFade;
             vec3 sunCol = mix(vec3(1.0, 0.5, 0.2), vec3(1.0, 0.96, 0.86), clamp(sunDir.y * 3.0, 0.0, 1.0));
             col += sunCol * (spec1 + spec2) * dayFactor;
 
@@ -1353,9 +1597,11 @@
             float steepFoam = smoothstep(0.32, 0.78, vWaveCrest * (0.85 + uWaveHeight * 0.20));
             float boatDist = length(vWorldPos.xz - uBoatPos.xz);
             float boatRing = smoothstep(1.35, 0.65, boatDist) * 0.55;
+            float foamFade = 1.0 - smoothstep(80.0, 240.0, dist);
 
-            float foamMask = clamp((steepFoam + boatRing) * foamNoise * uFoam * 1.45, 0.0, 0.92);
-            vec3 foamCol = mix(vec3(0.32, 0.40, 0.50), vec3(0.92, 0.96, 0.99), dayFactor);
+            float foamMask = clamp((steepFoam + boatRing) * foamNoise * uFoam * 1.45 * foamFade, 0.0, 0.92);
+            vec3 foamCol = mix(vec3(0.22, 0.30, 0.40), vec3(0.92, 0.96, 0.99), dayFactor);
+            foamCol = mix(foamCol, vec3(1.0, 0.68, 0.48), sunsetFactor * 0.52 * (0.3 + 0.7 * dayFactor));
             col = mix(col, foamCol, foamMask);
 
             float fogFactor = smoothstep(220.0, 980.0, dist);
@@ -1379,6 +1625,7 @@
         oceanMesh.geometry.dispose();
         oceanMesh = new THREE.Mesh(buildOceanGeometry(segs), oceanMat);
         oceanMesh.renderOrder = 1;
+        oceanUniforms.uMeshDensity.value = Math.min(1.0, Math.max(0.35, segs / 200.0));
         scene.add(oceanMesh);
       }
 
@@ -1842,7 +2089,7 @@
         state.autoFollow = e.target.checked;
       });
 
-      const presetButtons = document.querySelectorAll('.preset-btn');
+      const presetButtons = document.querySelectorAll('.preset-btn[data-preset]');
       presetButtons.forEach(btn => {
         btn.addEventListener('click', () => {
           const key = btn.dataset.preset;
@@ -1877,6 +2124,21 @@
         });
       });
 
+      const skinButtons = document.querySelectorAll('.preset-btn[data-skin]');
+      skinButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const skinKey = btn.dataset.skin;
+          skinButtons.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          setCharacterSkin(skinKey);
+        });
+      });
+
+      const nightSplashCol = new THREE.Color(0.14, 0.22, 0.34);
+      const daySplashCol = new THREE.Color(0.90, 0.96, 1.00);
+      const sunsetSplashCol = new THREE.Color(0.98, 0.62, 0.42);
+      const tmpSplashCol = new THREE.Color();
+
       function updateLighting() {
         const elev = THREE.MathUtils.degToRad(state.sunElev);
         const azim = THREE.MathUtils.degToRad(state.sunAzim);
@@ -1910,6 +2172,10 @@
           THREE.MathUtils.lerp(0.22, 0.82, day),
           THREE.MathUtils.lerp(0.38, 1.0, day)
         );
+
+        tmpSplashCol.copy(nightSplashCol).lerp(daySplashCol, day);
+        tmpSplashCol.lerp(sunsetSplashCol, sunset * 0.68 * (0.28 + 0.72 * day));
+        splashMat.uniforms.uColor.value.copy(tmpSplashCol);
       }
 
       window.addEventListener('resize', () => {
