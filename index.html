@@ -227,6 +227,29 @@
       cursor: pointer;
     }
 
+    .reroll-btn {
+      width: 100%;
+      margin: 4px 0 8px 0;
+      padding: 9px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(108, 229, 255, 0.4);
+      background: rgba(14, 165, 233, 0.22);
+      color: #e0f4ff;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.12s ease, background 0.15s ease;
+    }
+    .reroll-btn:hover {
+      background: rgba(14, 165, 233, 0.36);
+    }
+    .reroll-btn:active {
+      transform: scale(0.97);
+    }
+    .reroll-btn.hidden {
+      display: none;
+    }
+
     .install-pwa-btn {
       width: 100%;
       margin-top: 6px;
@@ -343,6 +366,11 @@
     </div>
 
     <div class="section-label">Океан и волны</div>
+    <div class="toggle-row" style="border-top:none;padding-top:2px;">
+      <span>Режим: Рандомные волны</span>
+      <input type="checkbox" id="chk-randomWaves">
+    </div>
+    <button id="btn-reroll-waves" class="reroll-btn hidden">🎲 Новые случайные волны</button>
     <div class="control-row">
       <div class="control-header"><span>Высота волн</span><span class="control-val" id="val-waveHeight">1.20</span></div>
       <input type="range" id="inp-waveHeight" min="0.05" max="6.50" step="0.05" value="1.20">
@@ -362,6 +390,14 @@
     <div class="control-row">
       <div class="control-header"><span>Пена на гребнях</span><span class="control-val" id="val-foam">1.00</span></div>
       <input type="range" id="inp-foam" min="0.0" max="2.0" step="0.05" value="1.00">
+    </div>
+    <div class="control-row">
+      <div class="control-header"><span>Детализация волн вдали</span><span class="control-val" id="val-waveDetail">100%</span></div>
+      <input type="range" id="inp-waveDetail" min="0" max="100" step="5" value="100">
+    </div>
+    <div class="toggle-row">
+      <span>Без сглаживания океана вблизи</span>
+      <input type="checkbox" id="chk-nearSharp" checked>
     </div>
 
     <div class="section-label">Небо и атмосфера</div>
@@ -594,11 +630,16 @@
       const state = {
         preset: 'ultra',
         skin: 'steve',
+        randomWaves: false,
+        chaosFactor: 0.0,
+        windTheta: Math.random() * Math.PI * 2,
         waveHeight: 1.20,
         waveFreq: 1.00,
         waveSpeed: 1.00,
         transparency: 0.45,
         foam: 1.00,
+        waveDetail: 1.00,
+        nearSharp: true,
         sunElev: 28,
         sunAzim: 140,
         clouds: 0.55,
@@ -617,10 +658,10 @@
       };
 
       const PRESETS = {
-        ultra:  { label: 'Ультра',  segs: 200, particlesPct: 100, dpr: Math.min(window.devicePixelRatio || 1, 2.0), shadows: true,  detailNormals: 1.0 },
-        high:   { label: 'Высокое', segs: 150, particlesPct: 80,  dpr: Math.min(window.devicePixelRatio || 1, 1.5), shadows: true,  detailNormals: 1.0 },
-        medium: { label: 'Среднее', segs: 100, particlesPct: 50,  dpr: 1.0,                                        shadows: false, detailNormals: 0.6 },
-        low:    { label: 'Эконом',  segs: 64,  particlesPct: 20,  dpr: 0.75,                                       shadows: false, detailNormals: 0.0 }
+        ultra:  { label: 'Ультра',  segs: 200, particlesPct: 100, dpr: Math.min(window.devicePixelRatio || 1, 2.0), shadows: true,  detailNormals: 1.0, waveDetail: 1.0, nearSharp: true },
+        high:   { label: 'Высокое', segs: 150, particlesPct: 80,  dpr: Math.min(window.devicePixelRatio || 1, 1.5), shadows: true,  detailNormals: 1.0, waveDetail: 0.8, nearSharp: true },
+        medium: { label: 'Среднее', segs: 100, particlesPct: 50,  dpr: 1.0,                                        shadows: false, detailNormals: 0.6, waveDetail: 0.5, nearSharp: false },
+        low:    { label: 'Эконом',  segs: 64,  particlesPct: 20,  dpr: 0.75,                                       shadows: false, detailNormals: 0.0, waveDetail: 0.2, nearSharp: false }
       };
 
       const container = document.getElementById('canvas-container');
@@ -1208,36 +1249,212 @@
         rightArm.position.x = -armOffsetX;
       }
 
-      const WAVES = [
-        { dx:  0.92, dz:  0.39, wl: 38.0, amp: 0.42, steep: 0.52 },
-        { dx:  0.45, dz: -0.89, wl: 25.0, amp: 0.28, steep: 0.48 },
-        { dx: -0.68, dz:  0.73, wl: 15.0, amp: 0.16, steep: 0.44 },
-        { dx:  0.81, dz: -0.58, wl:  9.5, amp: 0.09, steep: 0.38 },
-        { dx: -0.25, dz: -0.97, wl:  6.0, amp: 0.045, steep: 0.32 },
-        { dx:  0.15, dz:  0.99, wl:  4.1, amp: 0.025, steep: 0.28 }
+      const DEFAULT_WAVES = [
+        { dx:  0.92, dz:  0.39, wl: 38.0, amp: 0.42,  steep: 0.52, phaseOffset: 0, speedMult: 1.0, seed: 1.1 },
+        { dx:  0.45, dz: -0.89, wl: 25.0, amp: 0.28,  steep: 0.48, phaseOffset: 0, speedMult: 1.0, seed: 2.3 },
+        { dx: -0.68, dz:  0.73, wl: 15.0, amp: 0.16,  steep: 0.44, phaseOffset: 0, speedMult: 1.0, seed: 3.7 },
+        { dx:  0.81, dz: -0.58, wl:  9.5, amp: 0.09,  steep: 0.38, phaseOffset: 0, speedMult: 1.0, seed: 5.1 },
+        { dx: -0.25, dz: -0.97, wl:  6.0, amp: 0.045, steep: 0.32, phaseOffset: 0, speedMult: 1.0, seed: 6.9 },
+        { dx:  0.15, dz:  0.99, wl:  4.1, amp: 0.025, steep: 0.28, phaseOffset: 0, speedMult: 1.0, seed: 8.4 },
+        { dx:  1.00, dz:  0.00, wl: 14.0, amp: 0.0,   steep: 0.35, phaseOffset: 0, speedMult: 1.0, seed: 10.2 },
+        { dx:  0.00, dz:  1.00, wl:  8.0, amp: 0.0,   steep: 0.35, phaseOffset: 0, speedMult: 1.0, seed: 12.7 },
+        { dx: -0.70, dz:  0.71, wl: 18.0, amp: 0.0,   steep: 0.35, phaseOffset: 0, speedMult: 1.0, seed: 15.4 },
+        { dx:  0.70, dz:  0.71, wl:  5.5, amp: 0.0,   steep: 0.30, phaseOffset: 0, speedMult: 1.0, seed: 18.9 }
       ];
+
+      const CHAOTIC_BANDS = [
+        { wlMin: 34.0, wlMax: 52.0, ampRatioMin: 0.0055, ampRatioMax: 0.0135, steepMin: 0.30, steepMax: 0.54, spread: 1.1 },
+        { wlMin: 24.0, wlMax: 34.0, ampRatioMin: 0.0055, ampRatioMax: 0.0130, steepMin: 0.28, steepMax: 0.52, spread: 1.5 },
+        { wlMin: 17.0, wlMax: 24.0, ampRatioMin: 0.0055, ampRatioMax: 0.0125, steepMin: 0.28, steepMax: 0.50, spread: 2.1 },
+        { wlMin: 12.0, wlMax: 17.0, ampRatioMin: 0.0060, ampRatioMax: 0.0125, steepMin: 0.26, steepMax: 0.48, spread: 2.5 },
+        { wlMin:  8.5, wlMax: 12.0, ampRatioMin: 0.0060, ampRatioMax: 0.0120, steepMin: 0.24, steepMax: 0.46, spread: 3.1 },
+        { wlMin:  6.0, wlMax:  8.5, ampRatioMin: 0.0060, ampRatioMax: 0.0115, steepMin: 0.22, steepMax: 0.44, spread: 3.1 },
+        { wlMin:  4.5, wlMax:  6.0, ampRatioMin: 0.0050, ampRatioMax: 0.0100, steepMin: 0.20, steepMax: 0.40, spread: 3.1 },
+        { wlMin:  3.4, wlMax:  4.5, ampRatioMin: 0.0045, ampRatioMax: 0.0090, steepMin: 0.18, steepMax: 0.36, spread: 3.1 },
+        { wlMin: 11.0, wlMax: 23.0, ampRatioMin: 0.0040, ampRatioMax: 0.0115, steepMin: 0.24, steepMax: 0.48, spread: 6.28 },
+        { wlMin:  5.2, wlMax: 10.5, ampRatioMin: 0.0045, ampRatioMax: 0.0105, steepMin: 0.22, steepMax: 0.44, spread: 6.28 }
+      ];
+
+      const waveSlots = DEFAULT_WAVES.map((w, i) => ({
+        dx: w.dx,
+        dz: w.dz,
+        wl: w.wl,
+        targetAmp: w.amp,
+        amp: w.amp,
+        steep: w.steep,
+        phaseOffset: w.phaseOffset,
+        speedMult: w.speedMult,
+        seed: w.seed,
+        env: i < 6 ? 1.0 : 0.0,
+        age: i * 1.8,
+        cycleDur: 18.0,
+        fadeDur: 3.6,
+        fadeInDur: 3.6,
+        delay: 0,
+        forceOut: false,
+        isRandom: false
+      }));
+
+      function rollWaveBand(i, fastIn) {
+        const b = CHAOTIC_BANDS[i];
+        const theta = state.windTheta + (Math.random() - 0.5) * b.spread;
+        const wl = b.wlMin + Math.random() * (b.wlMax - b.wlMin);
+        const ratio = b.ampRatioMin + Math.random() * (b.ampRatioMax - b.ampRatioMin);
+        const steep = b.steepMin + Math.random() * (b.steepMax - b.steepMin);
+        const slot = waveSlots[i];
+        slot.dx = Math.cos(theta);
+        slot.dz = Math.sin(theta);
+        slot.wl = wl;
+        slot.targetAmp = wl * ratio;
+        slot.amp = 0;
+        slot.steep = steep;
+        slot.phaseOffset = Math.random() * Math.PI * 2;
+        slot.speedMult = 0.78 + Math.random() * 0.48;
+        slot.seed = Math.random() * 100.0;
+        slot.isRandom = true;
+        slot.forceOut = false;
+        slot.age = 0;
+        slot.fadeInDur = fastIn ? 0.75 : 3.6;
+        slot.cycleDur = 15.0 + Math.random() * 9.0;
+      }
+
+      function triggerWaveTransition(toRandom) {
+        if (toRandom) {
+          state.windTheta = Math.random() * Math.PI * 2;
+        }
+        for (let i = 0; i < waveSlots.length; i++) {
+          const slot = waveSlots[i];
+          slot.forceOut = true;
+          slot.delay = i * 0.11;
+          if (!toRandom && !slot.isRandom) {
+            slot.forceOut = false;
+            slot.delay = 0;
+          }
+        }
+      }
+
+      function updateWaveSlots(dt) {
+        const targetChaos = state.randomWaves ? 1.0 : 0.0;
+        state.chaosFactor = THREE.MathUtils.lerp(state.chaosFactor, targetChaos, 1 - Math.exp(-2.8 * dt));
+        oceanUniforms.uChaos.value = state.chaosFactor;
+
+        for (let i = 0; i < waveSlots.length; i++) {
+          const slot = waveSlots[i];
+          if (slot.delay > 0) {
+            slot.delay = Math.max(0, slot.delay - dt);
+          }
+
+          if (!state.randomWaves) {
+            if (slot.isRandom || slot.forceOut) {
+              if (slot.delay === 0) {
+                slot.env = Math.max(0, slot.env - dt * 2.4);
+                if (slot.env <= 0) {
+                  const def = DEFAULT_WAVES[i];
+                  slot.dx = def.dx;
+                  slot.dz = def.dz;
+                  slot.wl = def.wl;
+                  slot.targetAmp = def.amp;
+                  slot.steep = def.steep;
+                  slot.phaseOffset = def.phaseOffset;
+                  slot.speedMult = def.speedMult;
+                  slot.seed = def.seed;
+                  slot.isRandom = false;
+                  slot.forceOut = false;
+                }
+              }
+            } else {
+              if (i < 6) {
+                slot.env = Math.min(1, slot.env + dt * 1.5);
+              } else {
+                slot.env = Math.max(0, slot.env - dt * 2.4);
+              }
+            }
+          } else {
+            if (!slot.isRandom || slot.forceOut) {
+              if (slot.delay === 0) {
+                slot.env = Math.max(0, slot.env - dt * 2.4);
+                if (slot.env <= 0) {
+                  rollWaveBand(i, true);
+                }
+              }
+            } else {
+              slot.age += dt;
+              if (slot.age >= slot.cycleDur) {
+                slot.env = 0;
+                rollWaveBand(i, false);
+              } else if (slot.age < slot.fadeInDur) {
+                const u = slot.age / slot.fadeInDur;
+                slot.env = u * u * (3 - 2 * u);
+              } else if (slot.age > slot.cycleDur - slot.fadeDur) {
+                const u = (slot.cycleDur - slot.age) / slot.fadeDur;
+                slot.env = u * u * (3 - 2 * u);
+              } else {
+                slot.env = 1.0;
+              }
+            }
+          }
+
+          slot.amp = slot.targetAmp * slot.env;
+          oceanUniforms.uWaveDirWl.value[i].set(slot.dx, slot.dz, slot.wl, slot.amp);
+          oceanUniforms.uWaveMeta.value[i].set(slot.steep, slot.phaseOffset, slot.speedMult, slot.seed);
+        }
+      }
 
       function evalGerstnerRaw(x, z, time, waveHeight, waveFreq, waveSpeed) {
         let ox = 0, oy = 0, oz = 0;
         let nx = 0, ny = 1, nz = 0;
-        for (let i = 0; i < WAVES.length; i++) {
-          const w = WAVES[i];
+        const chaos = state.chaosFactor;
+        for (let i = 0; i < waveSlots.length; i++) {
+          const w = waveSlots[i];
+          if (w.amp <= 0.0001) continue;
+
           const k = ((Math.PI * 2) / w.wl) * waveFreq;
-          const amp = w.amp * waveHeight;
-          const speed = Math.sqrt(9.81 / k) * waveSpeed;
-          const q = w.steep / Math.max(1.0, 6.0 * k * amp);
-          const phase = k * (w.dx * x + w.dz * z) - speed * time;
+          const speed = Math.sqrt(9.81 / k) * waveSpeed * w.speedMult;
+
+          const perpX = -w.dz;
+          const perpZ = w.dx;
+          let groupMod = 1.0;
+          let warpOffset = 0.0;
+          let dPhaseX = k * w.dx;
+          let dPhaseZ = k * w.dz;
+
+          if (chaos > 0.001) {
+            const gPhase1 = 0.048 * (w.dx * x + w.dz * z) - 0.32 * time + w.seed * 1.7;
+            const gPhase2 = 0.064 * (perpX * x + perpZ * z) + 0.24 * time + w.seed * 3.1;
+            const envVal = 0.72 + 0.30 * Math.sin(gPhase1) + 0.26 * Math.sin(gPhase2) + 0.14 * Math.sin(gPhase1 * 0.73 - gPhase2 * 1.17 + w.seed);
+            groupMod = 1.0 + (envVal - 1.0) * chaos;
+
+            const wAngle1 = 0.075 * (perpX * x + perpZ * z) - 0.27 * time + w.seed * 2.3;
+            const dir2X = w.dx * 0.6 + perpX * 0.8;
+            const dir2Z = w.dz * 0.6 + perpZ * 0.8;
+            const wAngle2 = 0.115 * (dir2X * x + dir2Z * z) + 0.19 * time + w.seed * 4.1;
+            warpOffset = chaos * (1.35 * Math.sin(wAngle1) + 0.85 * Math.sin(wAngle2));
+
+            const dWarp1 = chaos * 1.35 * Math.cos(wAngle1) * 0.075;
+            const dWarp2 = chaos * 0.85 * Math.cos(wAngle2) * 0.115;
+            dPhaseX += dWarp1 * perpX + dWarp2 * dir2X;
+            dPhaseZ += dWarp1 * perpZ + dWarp2 * dir2Z;
+          }
+
+          const gradLen = Math.max(0.0001, Math.hypot(dPhaseX, dPhaseZ));
+          const ampPeak = w.amp * (1.0 + 0.45 * chaos) * waveHeight;
+          const amp = w.amp * groupMod * waveHeight;
+          const q = w.steep / Math.max(1.0, 11.0 * gradLen * ampPeak);
+
+          const phase = k * (w.dx * x + w.dz * z) - speed * time + w.phaseOffset + warpOffset;
           const c = Math.cos(phase);
           const s = Math.sin(phase);
 
-          ox += q * amp * w.dx * c;
-          oz += q * amp * w.dz * c;
+          const gDirX = dPhaseX / gradLen;
+          const gDirZ = dPhaseZ / gradLen;
+
+          ox += q * amp * gDirX * c;
+          oz += q * amp * gDirZ * c;
           oy += amp * s;
 
-          const wa = k * amp;
-          nx -= w.dx * wa * c;
-          nz -= w.dz * wa * c;
-          ny -= q * wa * s;
+          nx -= dPhaseX * amp * c;
+          nz -= dPhaseZ * amp * c;
+          ny -= q * gradLen * amp * s;
         }
         const invLen = 1.0 / Math.hypot(nx, ny, nz);
         return {
@@ -1438,7 +1655,16 @@
         uClouds: { value: state.clouds },
         uDetailNormals: { value: state.detailNormals },
         uBoatPos: { value: new THREE.Vector3() },
-        uMeshDensity: { value: 1.0 }
+        uMeshDensity: { value: 1.0 },
+        uWaveDetail: { value: state.waveDetail },
+        uNearSharp: { value: state.nearSharp ? 1.0 : 0.0 },
+        uChaos: { value: 0.0 },
+        uWaveDirWl: {
+          value: DEFAULT_WAVES.map(w => new THREE.Vector4(w.dx, w.dz, w.wl, w.amp))
+        },
+        uWaveMeta: {
+          value: DEFAULT_WAVES.map(w => new THREE.Vector4(w.steep, w.phaseOffset, w.speedMult, w.seed))
+        }
       };
 
       const oceanMat = new THREE.ShaderMaterial({
@@ -1452,35 +1678,76 @@
           uniform float uWaveSpeed;
           uniform vec3 uBoatPos;
           uniform float uMeshDensity;
+          uniform float uWaveDetail;
+          uniform float uChaos;
+          uniform vec4 uWaveDirWl[10];
+          uniform vec4 uWaveMeta[10];
 
           varying vec3 vWorldPos;
           varying vec3 vWaveNormal;
           varying float vWaveCrest;
 
-          void addGerstner(vec2 dir, float wl, float ampBase, float steep, vec2 xz, float distFromBoat,
+          void addGerstner(vec4 dirWl, vec4 meta, vec2 xz, float distFromBoat,
                            inout vec3 disp, inout vec3 norm, inout float crest) {
+            float ampBase = dirWl.w;
+            if (ampBase <= 0.0001) return;
+
+            vec2 dir = dirWl.xy;
+            float wl = dirWl.z;
+            float steep = meta.x;
+            float phaseOffset = meta.y;
+            float speedMult = meta.z;
+            float seed = meta.w;
+
             float wlEff = wl / max(uWaveFreq, 0.2);
-            float lodFade = 1.0 - smoothstep(wlEff * 3.0 * uMeshDensity, wlEff * 7.5 * uMeshDensity, distFromBoat);
+            float detailMult = mix(0.55, 1.0, uWaveDetail);
+            float span = (5.0 + wlEff * 0.14) * uMeshDensity * detailMult;
+            float lodFade = 1.0 - smoothstep(wlEff * span * 0.55, wlEff * span, distFromBoat);
             if (lodFade <= 0.001) return;
 
             float k = (6.2831853 / wl) * uWaveFreq;
-            float amp = ampBase * uWaveHeight * lodFade;
-            float spd = sqrt(9.81 / k) * uWaveSpeed;
-            float q = steep / max(1.0, 6.0 * k * (ampBase * uWaveHeight));
-            float phase = k * dot(dir, xz) - spd * uTime;
+            float spd = sqrt(9.81 / k) * uWaveSpeed * speedMult;
+
+            vec2 perp = vec2(-dir.y, dir.x);
+            float groupMod = 1.0;
+            float warpOffset = 0.0;
+            vec2 dPhase = k * dir;
+
+            if (uChaos > 0.001) {
+              float gPhase1 = 0.048 * dot(dir, xz) - 0.32 * uTime + seed * 1.7;
+              float gPhase2 = 0.064 * dot(perp, xz) + 0.24 * uTime + seed * 3.1;
+              float envVal = 0.72 + 0.30 * sin(gPhase1) + 0.26 * sin(gPhase2) + 0.14 * sin(gPhase1 * 0.73 - gPhase2 * 1.17 + seed);
+              groupMod = mix(1.0, envVal, uChaos);
+
+              float wAngle1 = 0.075 * dot(perp, xz) - 0.27 * uTime + seed * 2.3;
+              vec2 dir2 = dir * 0.6 + perp * 0.8;
+              float wAngle2 = 0.115 * dot(dir2, xz) + 0.19 * uTime + seed * 4.1;
+              warpOffset = uChaos * (1.35 * sin(wAngle1) + 0.85 * sin(wAngle2));
+
+              float dWarp1 = uChaos * 1.35 * cos(wAngle1) * 0.075;
+              float dWarp2 = uChaos * 0.85 * cos(wAngle2) * 0.115;
+              dPhase += dWarp1 * perp + dWarp2 * dir2;
+            }
+
+            float gradLen = max(0.0001, length(dPhase));
+            float ampPeak = ampBase * (1.0 + 0.45 * uChaos) * uWaveHeight;
+            float amp = ampBase * groupMod * uWaveHeight * lodFade;
+            float q = steep / max(1.0, 11.0 * gradLen * ampPeak);
+
+            float phase = k * dot(dir, xz) - spd * uTime + phaseOffset + warpOffset;
             float c = cos(phase);
             float s = sin(phase);
 
-            disp.x += q * amp * dir.x * c;
-            disp.z += q * amp * dir.y * c;
+            vec2 gDir = dPhase / gradLen;
+            disp.x += q * amp * gDir.x * c;
+            disp.z += q * amp * gDir.y * c;
             disp.y += amp * s;
 
-            float wa = k * amp;
-            norm.x -= dir.x * wa * c;
-            norm.z -= dir.y * wa * c;
-            norm.y -= q * wa * s;
+            norm.x -= dPhase.x * amp * c;
+            norm.z -= dPhase.y * amp * c;
+            norm.y -= q * gradLen * amp * s;
 
-            crest += max(0.0, s) * amp * (k * 0.45);
+            crest += max(0.0, s) * amp * (gradLen * 0.45);
           }
 
           void main() {
@@ -1491,14 +1758,13 @@
             vec3 norm = vec3(0.0, 1.0, 0.0);
             float crest = 0.0;
 
-            addGerstner(vec2( 0.92,  0.39), 38.0, 0.42,  0.52, xz, distFromBoat, disp, norm, crest);
-            addGerstner(vec2( 0.45, -0.89), 25.0, 0.28,  0.48, xz, distFromBoat, disp, norm, crest);
-            addGerstner(vec2(-0.68,  0.73), 15.0, 0.16,  0.44, xz, distFromBoat, disp, norm, crest);
-            addGerstner(vec2( 0.81, -0.58),  9.5, 0.09,  0.38, xz, distFromBoat, disp, norm, crest);
-            addGerstner(vec2(-0.25, -0.97),  6.0, 0.045, 0.32, xz, distFromBoat, disp, norm, crest);
-            addGerstner(vec2( 0.15,  0.99),  4.1, 0.025, 0.28, xz, distFromBoat, disp, norm, crest);
+            for (int i = 0; i < 10; i++) {
+              addGerstner(uWaveDirWl[i], uWaveMeta[i], xz, distFromBoat, disp, norm, crest);
+            }
 
-            float waveFade = 1.0 - smoothstep(180.0, 420.0, distFromBoat);
+            float farMin = mix(190.0, 390.0, uWaveDetail);
+            float farMax = mix(420.0, 680.0, uWaveDetail);
+            float waveFade = 1.0 - smoothstep(farMin, farMax, distFromBoat);
             disp *= waveFade;
             norm = normalize(mix(vec3(0.0, 1.0, 0.0), norm, waveFade));
             crest *= waveFade;
@@ -1521,6 +1787,9 @@
           uniform float uClouds;
           uniform float uDetailNormals;
           uniform vec3 uBoatPos;
+          uniform float uWaveDetail;
+          uniform float uNearSharp;
+          uniform float uChaos;
 
           varying vec3 vWorldPos;
           varying vec3 vWaveNormal;
@@ -1530,25 +1799,42 @@
 
           vec3 getMicroNormal(vec2 p, float dist, float viewY) {
             if (uDetailNormals < 0.05) return vec3(0.0, 1.0, 0.0);
-            float distFade = 1.0 - smoothstep(12.0, 85.0, dist);
-            float grazeFade = smoothstep(0.03, 0.24, viewY);
+
+            float detailScale = mix(0.42, 1.15, uWaveDetail);
+            float distFade = uNearSharp > 0.5
+              ? (1.0 - smoothstep(55.0 * detailScale, 210.0 * detailScale, dist))
+              : (1.0 - smoothstep(12.0 * detailScale, 90.0 * detailScale, dist));
+            float grazeFade = smoothstep(0.015, 0.14, viewY);
             float fade = distFade * grazeFade;
             if (fade < 0.01) return vec3(0.0, 1.0, 0.0);
 
-            float w2 = 1.0 - smoothstep(10.0, 48.0, dist);
-            float w3 = 1.0 - smoothstep(6.0, 24.0, dist);
+            float footprint = dist * 0.0028 / max(viewY, 0.08);
+            float w2Dist = uNearSharp > 0.5
+              ? (1.0 - smoothstep(32.0 * detailScale, 115.0 * detailScale, dist))
+              : (1.0 - smoothstep(10.0 * detailScale, 48.0 * detailScale, dist));
+            float w3Dist = uNearSharp > 0.5
+              ? (1.0 - smoothstep(18.0 * detailScale, 65.0 * detailScale, dist))
+              : (1.0 - smoothstep(6.0 * detailScale, 24.0 * detailScale, dist));
+            float w2 = w2Dist * (1.0 - smoothstep(0.40, 1.25, footprint));
+            float w3 = w3Dist * (1.0 - smoothstep(0.16, 0.52, footprint));
+
+            vec2 warpP = p + uChaos * vec2(
+              sin(p.y * 0.18 + uTime * 0.45) * 0.85,
+              cos(p.x * 0.17 - uTime * 0.39) * 0.85
+            );
 
             float fScale = 0.7 + 0.35 * uWaveFreq;
             float e = 0.08;
-            vec2 p1 = p * 0.55 * fScale + vec2(uTime * 0.38, uTime * 0.22);
-            vec2 p2 = p * 1.45 * fScale + vec2(-uTime * 0.52, uTime * 0.41);
-            vec2 p3 = p * 3.40 * fScale + vec2(uTime * 0.75, -uTime * 0.65);
+            vec2 p1 = warpP * 0.55 * fScale + vec2(uTime * 0.38, uTime * 0.22);
+            vec2 p2 = warpP * 1.45 * fScale + vec2(-uTime * 0.52, uTime * 0.41);
+            vec2 p3 = warpP * 3.40 * fScale + vec2(uTime * 0.75, -uTime * 0.65);
 
             float h0 = noise2(p1) * 0.55 + noise2(p2) * 0.30 * w2 + noise2(p3) * 0.15 * w3;
             float hx = noise2(p1 + vec2(e, 0.0)) * 0.55 + noise2(p2 + vec2(e * 2.0, 0.0)) * 0.30 * w2 + noise2(p3 + vec2(e * 4.0, 0.0)) * 0.15 * w3;
             float hz = noise2(p1 + vec2(0.0, e)) * 0.55 + noise2(p2 + vec2(0.0, e * 2.0)) * 0.30 * w2 + noise2(p3 + vec2(0.0, e * 4.0)) * 0.15 * w3;
 
-            float strength = (0.28 + 0.12 * min(uWaveHeight, 2.5)) * fade * uDetailNormals;
+            float chaosBoost = 1.0 + 0.28 * uChaos;
+            float strength = (0.28 + 0.12 * min(uWaveHeight, 2.5)) * fade * uDetailNormals * chaosBoost;
             return normalize(vec3((h0 - hx) / e * strength, 1.0, (h0 - hz) / e * strength));
           }
 
@@ -1557,16 +1843,17 @@
             float dist = length(cameraPosition - vWorldPos);
             vec3 sunDir = normalize(uSunDir);
 
-            float distantCalm = 1.0 - smoothstep(65.0, 230.0, dist);
-            float horizonCalm = smoothstep(0.02, 0.18, max(V.y, 0.0));
-            float normalWeight = clamp(distantCalm * (0.35 + 0.65 * horizonCalm), 0.0, 1.0);
-            vec3 baseN = normalize(mix(vec3(0.0, 1.0, 0.0), vWaveNormal, normalWeight));
+            float detailScale = mix(0.42, 1.15, uWaveDetail);
+            float distantCalm = uNearSharp > 0.5
+              ? (1.0 - smoothstep(150.0 * detailScale, 520.0 * detailScale, dist))
+              : (1.0 - smoothstep(65.0 * detailScale, 240.0 * detailScale, dist));
+            vec3 baseN = normalize(mix(vec3(0.0, 1.0, 0.0), vWaveNormal, clamp(distantCalm, 0.0, 1.0)));
 
             vec3 microN = getMicroNormal(vWorldPos.xz, dist, max(V.y, 0.0));
             vec3 N = normalize(vec3(baseN.x + microN.x * 0.55, baseN.y, baseN.z + microN.z * 0.55));
 
             vec3 R = reflect(-V, N);
-            R.y = max(R.y, 0.02);
+            R.y = max(R.y, 0.025);
             vec3 skyRefl = computeSky(normalize(R), sunDir, uTime, uClouds);
 
             float NdotV = max(dot(N, V), 0.0);
@@ -1584,9 +1871,9 @@
 
             vec3 H = normalize(sunDir + V);
             float NdotH = max(dot(N, H), 0.0);
-            float distSpecBlend = smoothstep(20.0, 220.0, dist);
-            float specPow = mix(280.0, 36.0, distSpecBlend);
-            float specFade = 1.0 - smoothstep(140.0, 560.0, dist);
+            float distSpecBlend = smoothstep(45.0, 280.0, dist);
+            float specPow = mix(280.0, 42.0, distSpecBlend);
+            float specFade = 1.0 - smoothstep(180.0, 620.0, dist);
             float spec1 = pow(max(NdotH, 0.0001), specPow) * mix(2.8, 0.45, distSpecBlend) * specFade;
             float spec2 = pow(max(NdotH, 0.0001), 45.0) * 0.22 * specFade;
             vec3 sunCol = mix(vec3(1.0, 0.5, 0.2), vec3(1.0, 0.96, 0.86), clamp(sunDir.y * 3.0, 0.0, 1.0));
@@ -1597,7 +1884,7 @@
             float steepFoam = smoothstep(0.32, 0.78, vWaveCrest * (0.85 + uWaveHeight * 0.20));
             float boatDist = length(vWorldPos.xz - uBoatPos.xz);
             float boatRing = smoothstep(1.35, 0.65, boatDist) * 0.55;
-            float foamFade = 1.0 - smoothstep(80.0, 240.0, dist);
+            float foamFade = 1.0 - smoothstep(110.0 * detailScale, 360.0 * detailScale, dist);
 
             float foamMask = clamp((steepFoam + boatRing) * foamNoise * uFoam * 1.45 * foamFade, 0.0, 0.92);
             vec3 foamCol = mix(vec3(0.22, 0.30, 0.40), vec3(0.92, 0.96, 0.99), dayFactor);
@@ -1988,9 +2275,22 @@
       const audioBtn = document.getElementById('audio-btn');
       const chkAudio = document.getElementById('chk-audio');
       const hudLeft = document.getElementById('hud-left');
+      const chkRandomWaves = document.getElementById('chk-randomWaves');
+      const btnRerollWaves = document.getElementById('btn-reroll-waves');
 
       settingsBtn.addEventListener('click', () => settingsPanel.classList.toggle('hidden'));
       closeSettingsBtn.addEventListener('click', () => settingsPanel.classList.add('hidden'));
+
+      chkRandomWaves.addEventListener('change', (e) => {
+        state.randomWaves = e.target.checked;
+        btnRerollWaves.classList.toggle('hidden', !state.randomWaves);
+        triggerWaveTransition(state.randomWaves);
+      });
+
+      btnRerollWaves.addEventListener('click', () => {
+        if (!state.randomWaves) return;
+        triggerWaveTransition(true);
+      });
 
       function setAudioEnabled(enabled) {
         if (enabled) {
@@ -2049,6 +2349,14 @@
       bindSlider('inp-foam', 'val-foam', 'foam', v => v.toFixed(2), v => {
         oceanUniforms.uFoam.value = v;
       });
+      bindSlider('inp-waveDetail', 'val-waveDetail', 'waveDetail', v => `${v}%`, v => {
+        state.waveDetail = v / 100;
+        oceanUniforms.uWaveDetail.value = state.waveDetail;
+      });
+      document.getElementById('chk-nearSharp').addEventListener('change', (e) => {
+        state.nearSharp = e.target.checked;
+        oceanUniforms.uNearSharp.value = state.nearSharp ? 1.0 : 0.0;
+      });
       bindSlider('inp-sunElev', 'val-sunElev', 'sunElev', v => `${v}°`);
       bindSlider('inp-sunAzim', 'val-sunAzim', 'sunAzim', v => `${v}°`);
       bindSlider('inp-clouds', 'val-clouds', 'clouds', v => v.toFixed(2), v => {
@@ -2103,12 +2411,17 @@
           state.dpr = p.dpr;
           state.shadows = p.shadows;
           state.detailNormals = p.detailNormals;
+          state.waveDetail = p.waveDetail;
+          state.nearSharp = p.nearSharp;
 
           document.getElementById('inp-particles').value = p.particlesPct;
           document.getElementById('val-particles').textContent = `${p.particlesPct}%`;
           document.getElementById('inp-dpr').value = p.dpr.toFixed(1);
           document.getElementById('val-dpr').textContent = `${p.dpr.toFixed(1)}x`;
           document.getElementById('chk-shadows').checked = p.shadows;
+          document.getElementById('inp-waveDetail').value = Math.round(p.waveDetail * 100);
+          document.getElementById('val-waveDetail').textContent = `${Math.round(p.waveDetail * 100)}%`;
+          document.getElementById('chk-nearSharp').checked = p.nearSharp;
           document.getElementById('hud-quality').textContent = p.label;
 
           renderer.setPixelRatio(p.dpr);
@@ -2116,6 +2429,8 @@
           renderer.shadowMap.enabled = p.shadows;
           sunLight.castShadow = p.shadows;
           oceanUniforms.uDetailNormals.value = p.detailNormals;
+          oceanUniforms.uWaveDetail.value = p.waveDetail;
+          oceanUniforms.uNearSharp.value = p.nearSharp ? 1.0 : 0.0;
 
           if (state.oceanSegs !== p.segs) {
             state.oceanSegs = p.segs;
@@ -2206,6 +2521,8 @@
           fpsAccum = 0;
           fpsFrames = 0;
         }
+
+        updateWaveSlots(dt);
 
         let throttle = input.joyY;
         let steer = -input.joyX;
